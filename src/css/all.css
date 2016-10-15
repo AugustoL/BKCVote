@@ -1,0 +1,75 @@
+
+html{
+	height: 100%;
+	overflow: hidden;
+}
+
+body{
+	height: 100%;
+	overflow: auto;
+	font-family: 'FontAwesome';
+	color: #001029;
+	background-image: url('/assets/background.png');
+}
+
+#contentBox{
+	background-color: #f8f8f8;
+	margin-top: 20px;
+	border-radius: 5px;
+	padding-bottom: 20px;
+	margin-bottom: 20px;
+}
+
+.input-group .form-control {
+    z-index: 0;
+}
+.cursor-pointer{
+	cursor: pointer;
+}
+
+a{
+	color: #001029;
+}
+
+.green{
+	color: green;
+}
+
+.title{
+	margin-bottom: 20px;
+	margin-top:50px;
+}
+
+.loading{
+	font-size: 50px;
+	margin-bottom: 50px;
+	margin-top:50px;
+}
+
+.white{
+	color: white;
+}
+
+.modalTitle{
+	margin-top: 10px;
+	margin-bottom: 10px;
+}
+
+.margin-bottom{
+	margin-bottom: 10px;
+}
+
+.margin-top{
+	margin-top: 10px;
+}
+
+.react-qr{
+	width: 300px;
+	height: 300px;
+}
+
+.modalBody{
+	margin-bottom: 10px;
+	padding-right: 10px;
+	padding-left: 10px;
+}
