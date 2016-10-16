@@ -9,7 +9,7 @@ import Loader from "../components/Loader";
 import Modal from '../components/Modal';
 import QRReader from "../components/QRReader";
 
-var packageJson = JSON.parse(require('../../package.json'));
+var appConfig = JSON.parse(require('../config.json'));
 
 var contracts = JSON.parse(require('../contracts.json'));
 
@@ -19,14 +19,14 @@ export default class Configure extends React.Component {
         super();
         this.state = {
             loading: false,
-            contractAddress: Store.contract.address || '',
-            web3Provider: Store.web3Provider || '',
+            contractAddress: Store.contract.address || appConfig.contractAddress || '',
+            web3Provider: Store.web3Provider || appConfig.web3Provider || '',
         }
     }
 
     componentWillMount() {
         var self = this;
-        if (self.state.contractAddress != ""){
+        if (Store.contract.address != ""){
             Actions.Ethereum.getContractInfo(function(err, info){
                 if (err)
                     console.error(err);
@@ -38,9 +38,14 @@ export default class Configure extends React.Component {
 
     configure(){
         var self = this;
-        var compiled = Store.web3.eth.compile.solidity(contracts.BKCVote.source);
         Actions.Config.configure(self.state.web3Provider);
-        Actions.Store.setContract(self.state.contractAddress, compiled.BKCVote.info.abiDefinition);
+        Actions.Store.setContract(self.state.contractAddress, contracts.BKCVote.info.abiDefinition);
+        window.location.reload();
+    }
+
+    clearStorage(){
+        window.localStorage.clear();
+        window.location.reload();
     }
 
     render() {
@@ -105,7 +110,7 @@ export default class Configure extends React.Component {
                                 <button type='submit' class="btn btn-md btn-default" onClick={() => this.configure()}>Configure</button>
                             </div>
                             <div class="row margin-bottom margin-top text-center">
-                                <button class="btn btn-md btn-default" onClick={() => {window.localStorage.clear()}}>Clear Storage</button>
+                                <button class="btn btn-md btn-default" onClick={() => {this.clearStorage()}}>Clear Storage</button>
                             </div>
                         </form>
                         <div class="col-xs-12 text-center">

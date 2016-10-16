@@ -14,8 +14,8 @@
     "bkc-accounts": "node blockchain.js accounts",
     "bkc-contracts": "node blockchain.js contracts",
     "bkc-clean": "rm -R blockchain/geth",
-    "geth-console": "go-ethereum/build/bin/geth --datadir=blockchain --rpc --rpcaddr=localhost --rpcport 8545 --rpccorsdomain=* --nodiscover --maxpeers=0 console",
-    "geth-console-example": "go-ethereum/build/bin/geth --datadir=example/blockchain --rpc --rpcaddr=localhost --rpcport 8545 --rpccorsdomain=* --nodiscover --maxpeers=0 console"
+    "geth-console": "go-ethereum/build/bin/geth --networkid 123456 --datadir=blockchain --rpc --rpcaddr=localhost --rpcport 8545 --rpccorsdomain=* --nodiscover --maxpeers=0 console",
+    "geth-console-example": "go-ethereum/build/bin/geth --networkid 123456 --datadir=example/blockchain --rpc --rpcaddr=localhost --rpcport 8545 --rpccorsdomain=* --nodiscover --maxpeers=0 console"
   },
   "dependencies": {
     "async": "^2.0.1",
@@ -58,9 +58,5 @@
     "web3": "^0.17.0-beta",
     "webpack": "^1.13.2",
     "webpack-dev-server": "^1.16.1"
-    },
-    "appConfig": {
-        "web3Host": "http://127.0.0.1:8545",
-        "contractAddress": "0x71e286b34966b9bc785f48c749ae6e7783c21a13"
     }
 }

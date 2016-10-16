@@ -6,7 +6,6 @@ import Store from "../Store";
 
 export function configure(provider) {
 	Store.setWeb3Provider(provider);
-	console.log(Store);
 	var web3 = new Web3(new Web3.providers.HttpProvider(Store.web3Provider));
 	console.log('WEB3 :',web3);
 	Dispatcher.dispatch({

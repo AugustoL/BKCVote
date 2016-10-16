@@ -1,1 +1,491 @@
-{"BKCVote":{"source":"contract BKCVote {   uint public blockStart;   uint public blockEnd;   bool public ended;   address public owner;   string public electionName;   uint public votesDone;   uint public votesToVerify;   event newVoter(address);   event newPostulant(address);   event voteAdded(address);   event voteVerified(address, address);   event verifierSet(address, address);   event error(uint);   struct Voter {       address addr;       string name;       string surename;       string born_date;       string personal_id;       string phisical_address;       address verifier;       bool verified;       bool alreadyVote;   }   struct Postulant {       address addr;       string name;       string surename;       string party;       uint votesAmount;   }   mapping(address => uint) public votersIndex;   Voter[] public voters;   mapping(address => uint) public postulantsIndex;   Postulant[] public postulants;   mapping(address => address) private votes;   function BKCVote(string _electionName, uint _blockStart, uint _blockEnd) {       ended = false;       owner = msg.sender;       blockStart = _blockStart;       blockEnd = _blockEnd;       electionName = _electionName;       voters.length ++;       postulants.length ++;       votesDone = 0;       votesToVerify = 0;   }   /*   ERROR CODES   Error 0 = Unauthorized Access.   Error 1 = Invalid Block Access.   Error 2 = Invalid Address.   Error 3 = Insufficent Balance.   Error 4 = Vote aldready done.   Error 5 = Vote already verified.   Error 6 = Vote not done.   Error 7 = Verifier not set.   */   function addVoter(address _addr,  string _name,  string _surename,  string _born_date,  string _personal_id, string _phisical_address) returns (bool){       if (owner != msg.sender){           error(0);           return (false);       } else if (block.number > blockStart){           error(1);           return (false);       } else if (votersIndex[_addr] > 0) {           error(2);           return (false);       } else {           uint pos = voters.length ++;           voters[pos] = Voter(_addr, _name, _surename, _born_date, _personal_id, _phisical_address, 0x0, false, false);           votersIndex[_addr] = pos;           votes[_addr] = address(0x0);           newVoter(_addr);           return (true);       }   }   function addPostulant(address _addr,  string _party) returns (bool){       if (owner != msg.sender){           error(0);           return (false);       } else if (block.number > blockStart){           error(1);           return (false);       } else if ((postulantsIndex[_addr] > 0) || (votersIndex[_addr] == 0)) {           error(2);           return (false);       } else {           uint pos = postulants.length++;           Voter postulant = voters[votersIndex[_addr]];           postulants[pos] = Postulant(_addr, postulant.name, postulant.surename, _party, 0);           postulantsIndex[_addr] = pos;           newPostulant(_addr);           return (true);       }   }   function setVerifier(address _addr, address _verifier) returns (bool){       if (owner != msg.sender){           error(0);           return (false);       } else if (block.number > blockStart){           error(1);           return (false);       } else if ((votersIndex[_addr] == 0) || (votersIndex[_verifier] == 0)) {           error(2);           return (false);       } else {           voters[ votersIndex[_addr] ].verifier = _verifier;           verifierSet(_addr, _verifier);           return (true);       }   }   function vote(address _toVote) returns (bool){       if ((block.number < blockStart) || (block.number > blockEnd)){           error(1);           return (false);       } else {           uint voterIndex = votersIndex[msg.sender];           if (( voterIndex  == 0) || ( postulantsIndex[_toVote] == 0)) {               error(2);               return (false);           } else if (voters[voterIndex].alreadyVote){               error(4);               return (false);           } else if (voters[voterIndex].verifier == address(0x0)){               error(7);               return (false);           }  else {               voters[voterIndex].alreadyVote = true;               votes[msg.sender] = _toVote;               votesDone ++;               votesToVerify ++;               voteAdded(msg.sender);               return (true);           }       }   }   function verify(address _toVerify) returns (bool){       if (block.number < blockStart){           error(1);           return (false);       } else {           uint _toVerifyIndex = votersIndex[_toVerify];           if (_toVerifyIndex == 0){               error(2);               return (false);           } else if (!voters[_toVerifyIndex].alreadyVote){               error(6);               return (false);           } else if (voters[_toVerifyIndex].verifier != msg.sender){               error(0);               return (false);           } else {               postulants[ postulantsIndex[ votes[_toVerify] ] ].votesAmount ++;               voters[ _toVerifyIndex ].verified = true;               votesToVerify --;               voteVerified(_toVerify, msg.sender);               return (true);           }       }   }   function seeVote() constant returns (address, bool){       uint voterIndex = votersIndex[msg.sender];       if ((voterIndex > 0) && (voters[voterIndex].alreadyVote)){           return (votes[msg.sender], voters[voterIndex].verified);       } else {           return (0x0, false);       }   }   function getVotersCount() public constant returns(uint) {       return voters.length;   }   function getPostulantsCount() public constant returns(uint) {       return postulants.length;   }}"}}
+{
+    "BKCVote": {
+        "code": "0x60606040526040516122b33803806122b383398101604052805160805160a0519190920191906002805433610100908102600160a860020a0319909216919091178255600084815560018481556003805488519382905290946020601f93831615909502600019019091160481018390047fc2575a0e9e593c00f959f8c92f12db2869c3395a3b0502d05e2516446f71f85b908101939091908801908390106100ea57805160ff19168380011785555b5061011a9291505b8082111561015357600081556001016100b7565b5050600060048190556005555050505050611e8d806104266000396000f35b828001600101855582156100af579182015b828111156100af5782518260005055916020019190600101906100fc565b505060078054600181018083559091908280158290116101575760070281600702836000526020600020918201910161015791906101ab565b5090565b505060098054600181018083559093509091508280158290116100cb576005028160050283600052602060002091820191016100cb9190610336565b5050600681018054600160b060020a03191690556007015b80821115610153578054600160a060020a031916815560018181018054600080835592600290821615610100026000190190911604601f81901061029357505b5060028201600050805460018160011615610100020316600290046000825580601f106102b157505b5060038201600050805460018160011615610100020316600290046000825580601f106102cf57505b5060048201600050805460018160011615610100020316600290046000825580601f106102ed57505b5060058201600050805460018160011615610100020316600290046000825580601f1061030b5750610193565b601f0160209004906000526020600020908101906101eb91906100b7565b601f01602090049060005260206000209081019061021491906100b7565b601f01602090049060005260206000209081019061023d91906100b7565b601f01602090049060005260206000209081019061026691906100b7565b601f01602090049060005260206000209081019061019391906100b7565b5050600060048201556005015b80821115610153578054600160a060020a031916815560018181018054600080835592600290821615610100026000190190911604601f8190106103cc57505b5060028201600050805460018160011615610100020316600290046000825580601f106103ea57505b5060038201600050805460018160011615610100020316600290046000825580601f106104085750610329565b601f01602090049060005260206000209081019061037691906100b7565b601f01602090049060005260206000209081019061039f91906100b7565b601f01602090049060005260206000209081019061032991906100b756606060405236156100e55760e060020a600035046305280e5281146100ea57806312fa6feb1461013d5780631625aeef1461014e57806363a9c3d71461016b5780636dd7d8ea146101aa5780636f52d1e9146101f957806377c060d4146102b55780637938355a146103975780637b2feaaa146103b457806385e8e7a7146103c257806386bb568c146104255780638da5cb5b146104345780638df6c5a0146104505780638f6e92cc146105e5578063a2d702f1146105f3578063a6efc3651461068f578063b903edcd1461069d578063c0f2a777146106ab578063da58c7d9146106bb575b610002565b346100025761072b6004356024356002546000906101009004600160a060020a039081163390911614610c4e57604080518281529051600080516020611e4d8339815191529181900360200190a1610d7e565b346100025761072b60025460ff1681565b346100025761073f60043560066020526000908152604090205481565b346100025761072b600435600080548190431015610d845760408051600181529051600080516020611e4d8339815191529181900360200190a1610faa565b346100025761072b6004356000805481904310806101c9575060015443115b15610fb05760408051600181529051600080516020611e4d8339815191529181900360200190a160009150610faa565b346100025761075133600160a060020a031660009081526006602052604081205481908181118015610255575060078054829081101561000257508083528102600080516020611e6d833981519152015460a860020a900460ff165b1561119f5733600160a060020a039081166000908152600a6020526040902054600780549190921691908390811015610002575060008190528202600080516020611e6d833981519152015490935060a060020a900460ff1691506111a7565b346100025761077560043560098054829081101561000257506000526005027f6e1540171b6c0c960b71a7020d9f60077f6af931a8bbf590da0223dacf75c7af8101547f6e1540171b6c0c960b71a7020d9f60077f6af931a8bbf590da0223dacf75c7b3820154600160a060020a0391909116917f6e1540171b6c0c960b71a7020d9f60077f6af931a8bbf590da0223dacf75c7b08101917f6e1540171b6c0c960b71a7020d9f60077f6af931a8bbf590da0223dacf75c7b18201917f6e1540171b6c0c960b71a7020d9f60077f6af931a8bbf590da0223dacf75c7b2019085565b346100025761073f60043560086020526000908152604090205481565b346100025761073f60005481565b34610002576040805160038054602060026001831615610100026000190190921691909104601f810182900482028401820190945283835261090d93908301828280156111d75780601f106111ac576101008083540402835291602001916111d7565b346100025761073f6009545b90565b346100025761097b6002546101009004600160a060020a031681565b346100025760408051602060248035600481810135601f810185900485028601850190965285855261072b9581359591946044949293909201918190840183828082843750506040805160209735808a0135601f81018a90048a0283018a019093528282529698976064979196506024919091019450909250829150840183828082843750506040805160209735808a0135601f81018a90048a0283018a019093528282529698976084979196506024919091019450909250829150840183828082843750506040805160209735808a0135601f81018a90048a0283018a0190935282825296989760a4979196506024919091019450909250829150840183828082843750506040805160209735808a0135601f81018a90048a0283018a0190935282825296989760c497919650602491909101945090925082915084018382808284375094965050505050505060025460009081906101009004600160a060020a0390811633909116146111df57604080518281529051600080516020611e4d8339815191529181900360200190a161136e565b346100025761073f60045481565b346100025760408051602060248035600481810135601f810185900485028601850190965285855261072b9581359591946044949293909201918190840183828082843750949650505050505050600254600090819081906101009004600160a060020a03908116339091161461187b5760408051600081529051600080516020611e4d8339815191529181900360200190a1600092506119ab565b346100025761073f60015481565b346100025761073f60055481565b346100025761073f600754610431565b346100025761099860043560078054829081101561000257906000526020600020906007020160005080546006820154600160a060020a03918216935060018301926002810192600382019260048301926005019181169060a060020a810460ff9081169160a860020a90041689565b604080519115158252519081900360200190f35b60408051918252519081900360200190f35b60408051600160a060020a0393909316835290151560208301528051918290030190f35b60408051600160a060020a03871681526080810183905260a0602082018181528754600260018216156101000260001901909116049183018290529192830190606084019060c08501908990801561080e5780601f106107e35761010080835404028352916020019161080e565b820191906000526020600020905b8154815290600101906020018083116107f157829003601f168201915b5050848103835287546002600182161561010002600019019091160480825260209190910190889080156108835780601f1061085857610100808354040283529160200191610883565b820191906000526020600020905b81548152906001019060200180831161086657829003601f168201915b5050848103825286546002600182161561010002600019019091160480825260209190910190879080156108f85780601f106108cd576101008083540402835291602001916108f8565b820191906000526020600020905b8154815290600101906020018083116108db57829003601f168201915b50509850505050505050505060405180910390f35b60405180806020018281038252838181518152602001915080519060200190808383829060006004602084601f0104600302600f01f150905090810190601f16801561096d5780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b60408051600160a060020a03929092168252519081900360200190f35b604051808a600160a060020a03168152602001806020018060200180602001806020018060200189600160a060020a031681526020018815158152602001871515815260200186810386528e818154600181600116156101000203166002900481526020019150805460018160011615610100020316600290048015610a5f5780601f10610a3457610100808354040283529160200191610a5f565b820191906000526020600020905b815481529060010190602001808311610a4257829003601f168201915b505086810385528d5460026001821615610100026000190190911604808252602091909101908e908015610ad45780601f10610aa957610100808354040283529160200191610ad4565b820191906000526020600020905b815481529060010190602001808311610ab757829003601f168201915b505086810384528c5460026001821615610100026000190190911604808252602091909101908d908015610b495780601f10610b1e57610100808354040283529160200191610b49565b820191906000526020600020905b815481529060010190602001808311610b2c57829003601f168201915b505086810383528b5460026001821615610100026000190190911604808252602091909101908c908015610bbe5780601f10610b9357610100808354040283529160200191610bbe565b820191906000526020600020905b815481529060010190602001808311610ba157829003601f168201915b505086810382528a5460026001821615610100026000190190911604808252602091909101908b908015610c335780601f10610c0857610100808354040283529160200191610c33565b820191906000526020600020905b815481529060010190602001808311610c1657829003601f168201915b50509e50505050505050505050505050505060405180910390f35b600054431115610c825760408051600181529051600080516020611e4d8339815191529181900360200190a1506000610d7e565b600160a060020a0383166000908152600660205260408120541480610cb85750600160a060020a03821660009081526040812054145b15610ce75760408051600281529051600080516020611e4d8339815191529181900360200190a1506000610d7e565b600160a060020a0383166000908152600660205260409020546007805484929081101561000257600082905202600080516020611e6d833981519152018054600160a060020a031916909117905560408051600160a060020a0385811682528416602082015281517f467705348409ca52cc480a02712a5ddbc8436ff8a6de0cf1f9dddb249ad0efca929181900390910190a15060015b92915050565b50600160a060020a03821660009081526006602052604081205490811415610dd15760408051600281529051600080516020611e4d8339815191529181900360200190a160009150610faa565b600780548290811015610002575060008190528102600080516020611e6d833981519152015460a860020a900460ff161515610e325760408051600681529051600080516020611e4d8339815191529181900360200190a160009150610faa565b33600160a060020a03166007600050828154811015610002575060008190528202600080516020611e6d8339815191520154600160a060020a031614610e9d5760408051600081529051600080516020611e4d8339815191529181900360200190a160009150610faa565b600160a060020a038381166000908152600a602090815260408083205490931682526008905260098054929091205490918110156100025760009182526005027f6e1540171b6c0c960b71a7020d9f60077f6af931a8bbf590da0223dacf75c7af01905060040180546001908101909155600780548390811015610002575060008190528202600080516020611e6d83398151915201805474ff0000000000000000000000000000000000000000191660a060020a179055506005805460001901905560408051600160a060020a0385811682523316602082015281517f30a2849cfaaf405f9497a707bb8e2698eb27d733d6593a27e1448029cb869a5e929181900390910190a1600191505b50919050565b5033600160a060020a031660009081526006602052604081205490811480610fee5750600160a060020a038316600090815260086020526040812054145b1561101e5760408051600281529051600080516020611e4d8339815191529181900360200190a160009150610faa565b600780548290811015610002575060008190528102600080516020611e6d833981519152015460a860020a900460ff161561107e5760408051600481529051600080516020611e4d8339815191529181900360200190a160009150610faa565b6007805460009190839081101561000257508082528202600080516020611e6d8339815191520154600160a060020a031614156110e05760408051600781529051600080516020611e4d8339815191529181900360200190a160009150610faa565b6001600760005082815481101561000257508202600080516020611e6d83398151915201805475ff000000000000000000000000000000000000000000191660a860020a17905533600160a060020a03166000818152600a60209081526040918290208054600160a060020a031916881790556004805485019055600580549094019093558051918252517f9a9a844017ad8466816a800b481d993909e70e1ec14b6c0b26b4b06e6fec9863929181900390910190a160019150610faa565b600092508291505b509091565b820191906000526020600020905b8154815290600101906020018083116111ba57829003601f168201915b505050505081565b6000544311156112145760408051600181529051600080516020611e4d8339815191529181900360200190a16000915061136e565b600160a060020a038816600090815260066020526040812054111561125e5760408051600281529051600080516020611e4d8339815191529181900360200190a16000915061136e565b600780546001810180835590919082801582901161137957600702816007028360005260206000209182019101611379919061147d565b505060c08201516006918201805460e08501516101009590950151600160a060020a031991821690931774ff0000000000000000000000000000000000000000191660a060020a959095029490941775ff000000000000000000000000000000000000000000191660a860020a92909202919091179055600160a060020a038a16600081815260209283526040808220869055600a8452908190208054909416909355825190815291517ff91e406c7179dd602438066c1f63cb1221d2b1904b9d0d2dc96b936aea7e336a9281900390910190a1600191505b509695505050505050565b50505090506101206040519081016040528089815260200188815260200187815260200186815260200185815260200184815260200160008152602001600081526020016000815260200150600760005082815481101561000257906000526020600020906007020160005081518154600160a060020a03191617815560208281015180516001848101805460008281528690209195600293821615610100026000190190911692909204601f9081018390048201949192919091019083901061160f57805160ff19168380011785555b5061163f92915061157f565b505060068101805475ffffffffffffffffffffffffffffffffffffffffffff191690556007015b80821115611593578054600160a060020a031916815560018181018054600080835592600290821615610100026000190190911604601f81901061156557505b5060028201600050805460018160011615610100020316600290046000825580601f1061159757505b5060038201600050805460018160011615610100020316600290046000825580601f106115b557505b5060048201600050805460018160011615610100020316600290046000825580601f106115d357505b5060058201600050805460018160011615610100020316600290046000825580601f106115f15750611456565b601f0160209004906000526020600020908101906114bd91905b80821115611593576000815560010161157f565b5090565b601f0160209004906000526020600020908101906114e6919061157f565b601f01602090049060005260206000209081019061150f919061157f565b601f016020900490600052602060002090810190611538919061157f565b601f016020900490600052602060002090810190611456919061157f565b8280016001018555821561144a579182015b8281111561144a578251826000505591602001919060010190611621565b50506040820151816002016000509080519060200190828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f1061169e57805160ff19168380011785555b506116ce92915061157f565b82800160010185558215611692579182015b828111156116925782518260005055916020019190600101906116b0565b50506060820151816003016000509080519060200190828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f1061172d57805160ff19168380011785555b5061175d92915061157f565b82800160010185558215611721579182015b8281111561172157825182600050559160200191906001019061173f565b50506080820151816004016000509080519060200190828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f106117bc57805160ff19168380011785555b506117ec92915061157f565b828001600101855582156117b0579182015b828111156117b05782518260005055916020019190600101906117ce565b505060a0820151816005016000509080519060200190828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f1061184b57805160ff19168380011785555b5061129592915061157f565b8280016001018555821561183f579182015b8281111561183f57825182600050559160200191906001019061185d565b6000544311156118b05760408051600181529051600080516020611e4d8339815191529181900360200190a1600092506119ab565b600160a060020a03851660009081526008602052604081205411806118df575060066020526040600090812054145b1561190f5760408051600281529051600080516020611e4d8339815191529181900360200190a1600092506119ab565b60098054600181018083559091908280158290116119b3576005028160050283600052602060002091820191016119b39190611aa7565b50506080919091015160049190910155600160a060020a038516600081815260086020908152604091829020859055815192835290517f5da3a3162b3da501a12a7898b1c84122526c76201f96aa445c7e0a4b0b6d964c9281900390910190a1600192505b505092915050565b505050600160a060020a03861660009081526006602052604090205460078054929450918110156100025760008290526040805160a0810182528881528151929093027fa66cc928b5edb82af9bd49922954155ab7b0942694bea4ce44661d9a8736c68981018054602060026001831615610100026000190190921691909104601f81018290048202860182019094528385527fa66cc928b5edb82af9bd49922954155ab7b0942694bea4ce44661d9a8736c68892909201955084820193929091830182828015611bc25780601f10611b9757610100808354040283529160200191611bc2565b5050600060048201556005015b80821115611593578054600160a060020a031916815560018181018054600080835592600290821615610100026000190190911604601f819010611b3d57505b5060028201600050805460018160011615610100020316600290046000825580601f10611b5b57505b5060038201600050805460018160011615610100020316600290046000825580601f10611b795750611a9a565b601f016020900490600052602060002090810190611ae7919061157f565b601f016020900490600052602060002090810190611b10919061157f565b601f016020900490600052602060002090810190611a9a919061157f565b820191906000526020600020905b815481529060010190602001808311611ba557829003601f168201915b5050509183525050604080516002858101805460206001821615610100026000190190911692909204601f810183900483028401830190945283835293810193919290830182828015611c565780601f10611c2b57610100808354040283529160200191611c56565b820191906000526020600020905b815481529060010190602001808311611c3957829003601f168201915b505050505081526020018581526020016000815260200150600960005083815481101561000257906000526020600020906005020160005081518154600160a060020a03191617815560208281015180516001848101805460008281528690209195600293821615610100026000190190911692909204601f90810183900482019491929190910190839010611cff57805160ff19168380011785555b50611d2f92915061157f565b82800160010185558215611cf3579182015b82811115611cf3578251826000505591602001919060010190611d11565b50506040820151816002016000509080519060200190828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f10611d8e57805160ff19168380011785555b50611dbe92915061157f565b82800160010185558215611d82579182015b82811115611d82578251826000505591602001919060010190611da0565b50506060820151816003016000509080519060200190828054600181600116156101000203166002900490600052602060002090601f016020900481019282601f10611e1d57805160ff19168380011785555b5061194692915061157f565b82800160010185558215611e11579182015b82811115611e11578251826000505591602001919060010190611e2f56b48fb6cf86d9c47e2268650bac422c18104332e413943278776f488788b991daa66cc928b5edb82af9bd49922954155ab7b0942694bea4ce44661d9a8736c68e",
+        "info": {
+            "source": "\ncontract BKCVote {\n\n   uint public blockStart;\n   uint public blockEnd;\n   bool public ended;\n   address public owner;\n   string public electionName;\n   uint public votesDone;\n   uint public votesToVerify;\n\n   event newVoter(address);\n   event newPostulant(address);\n   event voteAdded(address);\n   event voteVerified(address, address);\n   event verifierSet(address, address);\n   event error(uint);\n\n   struct Voter {\n       address addr;\n       string name;\n       string surename;\n       string born_date;\n       string personal_id;\n       string phisical_address;\n       address verifier;\n       bool verified;\n       bool alreadyVote;\n   }\n\n   struct Postulant {\n       address addr;\n       string name;\n       string surename;\n       string party;\n       uint votesAmount;\n   }\n\n   mapping(address => uint) public votersIndex;\n   Voter[] public voters;\n\n   mapping(address => uint) public postulantsIndex;\n   Postulant[] public postulants;\n\n   mapping(address => address) private votes;\n\n   function BKCVote(string _electionName, uint _blockStart, uint _blockEnd) {\n       ended = false;\n       owner = msg.sender;\n       blockStart = _blockStart;\n       blockEnd = _blockEnd;\n       electionName = _electionName;\n       voters.length ++;\n       postulants.length ++;\n       votesDone = 0;\n       votesToVerify = 0;\n   }\n\n   /*\n\n   ERROR CODES\n\n   Error 0 = Unauthorized Access.\n   Error 1 = Invalid Block Access.\n   Error 2 = Invalid Address.\n   Error 3 = Insufficent Balance.\n   Error 4 = Vote aldready done.\n   Error 5 = Vote already verified.\n   Error 6 = Vote not done.\n   Error 7 = Verifier not set.\n\n   */\n\n   function addVoter(address _addr,  string _name,  string _surename,  string _born_date,  string _personal_id, string _phisical_address) returns (bool){\n       if (owner != msg.sender){\n           error(0);\n           return (false);\n       } else if (block.number > blockStart){\n           error(1);\n           return (false);\n       } else if (votersIndex[_addr] > 0) {\n           error(2);\n           return (false);\n       } else {\n           uint pos = voters.length ++;\n           voters[pos] = Voter(_addr, _name, _surename, _born_date, _personal_id, _phisical_address, 0x0, false, false);\n           votersIndex[_addr] = pos;\n           votes[_addr] = address(0x0);\n           newVoter(_addr);\n           return (true);\n       }\n   }\n\n   function addPostulant(address _addr,  string _party) returns (bool){\n       if (owner != msg.sender){\n           error(0);\n           return (false);\n       } else if (block.number > blockStart){\n           error(1);\n           return (false);\n       } else if ((postulantsIndex[_addr] > 0) || (votersIndex[_addr] == 0)) {\n           error(2);\n           return (false);\n       } else {\n           uint pos = postulants.length++;\n           Voter postulant = voters[votersIndex[_addr]];\n           postulants[pos] = Postulant(_addr, postulant.name, postulant.surename, _party, 0);\n           postulantsIndex[_addr] = pos;\n           newPostulant(_addr);\n           return (true);\n       }\n   }\n\n   function setVerifier(address _addr, address _verifier) returns (bool){\n       if (owner != msg.sender){\n           error(0);\n           return (false);\n       } else if (block.number > blockStart){\n           error(1);\n           return (false);\n       } else if ((votersIndex[_addr] == 0) || (votersIndex[_verifier] == 0)) {\n           error(2);\n           return (false);\n       } else {\n           voters[ votersIndex[_addr] ].verifier = _verifier;\n           verifierSet(_addr, _verifier);\n           return (true);\n       }\n   }\n\n   function vote(address _toVote) returns (bool){\n       if ((block.number < blockStart) || (block.number > blockEnd)){\n           error(1);\n           return (false);\n       } else {\n           uint voterIndex = votersIndex[msg.sender];\n           if (( voterIndex  == 0) || ( postulantsIndex[_toVote] == 0)) {\n               error(2);\n               return (false);\n           } else if (voters[voterIndex].alreadyVote){\n               error(4);\n               return (false);\n           } else if (voters[voterIndex].verifier == address(0x0)){\n               error(7);\n               return (false);\n           }  else {\n               voters[voterIndex].alreadyVote = true;\n               votes[msg.sender] = _toVote;\n               votesDone ++;\n               votesToVerify ++;\n               voteAdded(msg.sender);\n               return (true);\n           }\n       }\n   }\n\n   function verify(address _toVerify) returns (bool){\n       if (block.number < blockStart){\n           error(1);\n           return (false);\n       } else {\n           uint _toVerifyIndex = votersIndex[_toVerify];\n           if (_toVerifyIndex == 0){\n               error(2);\n               return (false);\n           } else if (!voters[_toVerifyIndex].alreadyVote){\n               error(6);\n               return (false);\n           } else if (voters[_toVerifyIndex].verifier != msg.sender){\n               error(0);\n               return (false);\n           } else {\n               postulants[ postulantsIndex[ votes[_toVerify] ] ].votesAmount ++;\n               voters[ _toVerifyIndex ].verified = true;\n               votesToVerify --;\n               voteVerified(_toVerify, msg.sender);\n               return (true);\n           }\n       }\n   }\n\n   function seeVote() constant returns (address, bool){\n       uint voterIndex = votersIndex[msg.sender];\n       if ((voterIndex > 0) && (voters[voterIndex].alreadyVote)){\n           return (votes[msg.sender], voters[voterIndex].verified);\n       } else {\n           return (0x0, false);\n       }\n   }\n\n   function getVotersCount() public constant returns(uint) {\n       return voters.length;\n   }\n\n   function getPostulantsCount() public constant returns(uint) {\n       return postulants.length;\n   }\n\n}\n",
+            "language": "Solidity",
+            "languageVersion": "0.4.2",
+            "compilerVersion": "0.4.2",
+            "compilerOptions": "--combined-json bin,abi,userdoc,devdoc --add-std --optimize",
+            "abiDefinition": [
+                {
+                    "constant": false,
+                    "inputs": [
+                        {
+                            "name": "_addr",
+                            "type": "address"
+                        },
+                        {
+                            "name": "_verifier",
+                            "type": "address"
+                        }
+                    ],
+                    "name": "setVerifier",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bool"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [],
+                    "name": "ended",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bool"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "address"
+                        }
+                    ],
+                    "name": "votersIndex",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": false,
+                    "inputs": [
+                        {
+                            "name": "_toVerify",
+                            "type": "address"
+                        }
+                    ],
+                    "name": "verify",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bool"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": false,
+                    "inputs": [
+                        {
+                            "name": "_toVote",
+                            "type": "address"
+                        }
+                    ],
+                    "name": "vote",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bool"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [],
+                    "name": "seeVote",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address"
+                        },
+                        {
+                            "name": "",
+                            "type": "bool"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "name": "postulants",
+                    "outputs": [
+                        {
+                            "name": "addr",
+                            "type": "address"
+                        },
+                        {
+                            "name": "name",
+                            "type": "string"
+                        },
+                        {
+                            "name": "surename",
+                            "type": "string"
+                        },
+                        {
+                            "name": "party",
+                            "type": "string"
+                        },
+                        {
+                            "name": "votesAmount",
+                            "type": "uint256"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "address"
+                        }
+                    ],
+                    "name": "postulantsIndex",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [],
+                    "name": "blockStart",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [],
+                    "name": "electionName",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "string"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [],
+                    "name": "getPostulantsCount",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [],
+                    "name": "owner",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": false,
+                    "inputs": [
+                        {
+                            "name": "_addr",
+                            "type": "address"
+                        },
+                        {
+                            "name": "_name",
+                            "type": "string"
+                        },
+                        {
+                            "name": "_surename",
+                            "type": "string"
+                        },
+                        {
+                            "name": "_born_date",
+                            "type": "string"
+                        },
+                        {
+                            "name": "_personal_id",
+                            "type": "string"
+                        },
+                        {
+                            "name": "_phisical_address",
+                            "type": "string"
+                        }
+                    ],
+                    "name": "addVoter",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bool"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [],
+                    "name": "votesDone",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": false,
+                    "inputs": [
+                        {
+                            "name": "_addr",
+                            "type": "address"
+                        },
+                        {
+                            "name": "_party",
+                            "type": "string"
+                        }
+                    ],
+                    "name": "addPostulant",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bool"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [],
+                    "name": "blockEnd",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [],
+                    "name": "votesToVerify",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [],
+                    "name": "getVotersCount",
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "name": "voters",
+                    "outputs": [
+                        {
+                            "name": "addr",
+                            "type": "address"
+                        },
+                        {
+                            "name": "name",
+                            "type": "string"
+                        },
+                        {
+                            "name": "surename",
+                            "type": "string"
+                        },
+                        {
+                            "name": "born_date",
+                            "type": "string"
+                        },
+                        {
+                            "name": "personal_id",
+                            "type": "string"
+                        },
+                        {
+                            "name": "phisical_address",
+                            "type": "string"
+                        },
+                        {
+                            "name": "verifier",
+                            "type": "address"
+                        },
+                        {
+                            "name": "verified",
+                            "type": "bool"
+                        },
+                        {
+                            "name": "alreadyVote",
+                            "type": "bool"
+                        }
+                    ],
+                    "payable": false,
+                    "type": "function"
+                },
+                {
+                    "inputs": [
+                        {
+                            "name": "_electionName",
+                            "type": "string"
+                        },
+                        {
+                            "name": "_blockStart",
+                            "type": "uint256"
+                        },
+                        {
+                            "name": "_blockEnd",
+                            "type": "uint256"
+                        }
+                    ],
+                    "type": "constructor"
+                },
+                {
+                    "anonymous": false,
+                    "inputs": [
+                        {
+                            "indexed": false,
+                            "name": "",
+                            "type": "address"
+                        }
+                    ],
+                    "name": "newVoter",
+                    "type": "event"
+                },
+                {
+                    "anonymous": false,
+                    "inputs": [
+                        {
+                            "indexed": false,
+                            "name": "",
+                            "type": "address"
+                        }
+                    ],
+                    "name": "newPostulant",
+                    "type": "event"
+                },
+                {
+                    "anonymous": false,
+                    "inputs": [
+                        {
+                            "indexed": false,
+                            "name": "",
+                            "type": "address"
+                        }
+                    ],
+                    "name": "voteAdded",
+                    "type": "event"
+                },
+                {
+                    "anonymous": false,
+                    "inputs": [
+                        {
+                            "indexed": false,
+                            "name": "",
+                            "type": "address"
+                        },
+                        {
+                            "indexed": false,
+                            "name": "",
+                            "type": "address"
+                        }
+                    ],
+                    "name": "voteVerified",
+                    "type": "event"
+                },
+                {
+                    "anonymous": false,
+                    "inputs": [
+                        {
+                            "indexed": false,
+                            "name": "",
+                            "type": "address"
+                        },
+                        {
+                            "indexed": false,
+                            "name": "",
+                            "type": "address"
+                        }
+                    ],
+                    "name": "verifierSet",
+                    "type": "event"
+                },
+                {
+                    "anonymous": false,
+                    "inputs": [
+                        {
+                            "indexed": false,
+                            "name": "",
+                            "type": "uint256"
+                        }
+                    ],
+                    "name": "error",
+                    "type": "event"
+                }
+            ],
+            "userDoc": {
+                "methods": {}
+            },
+            "developerDoc": {
+                "methods": {}
+            }
+        }
+    }
+}

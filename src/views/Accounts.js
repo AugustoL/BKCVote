@@ -12,6 +12,7 @@ export default class Accounts extends React.Component {
 
     constructor() {
         super();
+
         this.state = {
             contract: Store.contract || {
                 address: "",
@@ -21,7 +22,19 @@ export default class Accounts extends React.Component {
             adminAccount: appAccounts.admin,
             appAccounts: appAccounts.users
         }
-        console.log(appAccounts)
+        if (Actions.Ethereum.getNodeInfo().connected){
+            this.state.adminAccount.balance = Actions.Ethereum.getBalance(this.state.adminAccount.address);
+            for (var i = 0; i < this.state.appAccounts.length; i++)
+                this.state.appAccounts[i].balance = Actions.Ethereum.getBalance(this.state.appAccounts[i].address);
+            for (var i = 0; i < this.state.storageAccounts.length; i++)
+                this.state.storageAccounts[i].balance = Actions.Ethereum.getBalance(this.state.storageAccounts[i].address);
+        } else {
+            this.state.adminAccount.balance = "--";
+            for (var i = 0; i < this.state.appAccounts.length; i++)
+                this.state.appAccounts[i].balance = "--";
+            for (var i = 0; i < this.state.storageAccounts.length; i++)
+                this.state.storageAccounts[i].balance = "--"
+        }
     }
 
     render() {
@@ -37,6 +50,7 @@ export default class Accounts extends React.Component {
                             <tr>
                                 <th>#</th>
                                 <th class="text-center">Address</th>
+                                <th class="text-center">Balance (ETH)</th>
                                 <th class="text-center">Password</th>
                                 <th class="text-center">Account Data</th>
                             </tr>
@@ -45,8 +59,9 @@ export default class Accounts extends React.Component {
                             <tr>
                                 <th>0</th>
                                 <td><small>{self.state.adminAccount.address}</small></td>
+                                <td><small>{self.state.adminAccount.balance}</small></td>
                                 <td>{self.state.adminAccount.password}</td>
-                                <td><p style={{maxWidth:"200px", wordBreak: "break-all"}}><small>{self.state.adminAccount.data}</small></p></td>
+                                <td><p style={{ wordBreak: "break-all"}}><small>{self.state.adminAccount.data}</small></p></td>
                             </tr>
                         </tbody>
                     </table>
@@ -60,6 +75,7 @@ export default class Accounts extends React.Component {
                             <tr>
                                 <th>#</th>
                                 <th class="text-center">Address</th>
+                                <th class="text-center">Balance (ETH)</th>
                                 <th class="text-center">Password</th>
                                 <th class="text-center">Account Data</th>
                             </tr>
@@ -70,8 +86,9 @@ export default class Accounts extends React.Component {
                                     <tr key={index}>
                                         <th>{index}</th>
                                         <td><small>{account.address}</small></td>
+                                        <td><small>{account.balance}</small></td>
                                         <td>{account.password}</td>
-                                        <td><p style={{maxWidth:"200px", wordBreak: "break-all"}}><small>{account.data}</small></p></td>
+                                        <td><p style={{wordBreak: "break-all"}}><small>{account.data}</small></p></td>
                                     </tr>
                                 );
                             })}
@@ -87,6 +104,7 @@ export default class Accounts extends React.Component {
                             <tr>
                                 <th>#</th>
                                 <th class="text-center">Address</th>
+                                <th class="text-center">Balance (ETH)</th>
                                 <th class="text-center">Password</th>
                                 <th class="text-center">Account Data</th>
                             </tr>
@@ -97,8 +115,9 @@ export default class Accounts extends React.Component {
                                     <tr key={index}>
                                         <th>{index}</th>
                                         <td><small>{account.address}</small></td>
+                                        <td><small>{account.balance}</small></td>
                                         <td>{account.password}</td>
-                                        <td><p style={{maxWidth:"200px", wordBreak: "break-all"}}><small>{account.data}</small></p></td>
+                                        <td><p style={{wordBreak: "break-all"}}><small>{account.data}</small></p></td>
                                     </tr>
                                 );
                             })}

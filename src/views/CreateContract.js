@@ -34,7 +34,6 @@ export default class CreateContract extends React.Component {
     deploy(){
         var self = this;
         self.setState({loading: true, loadingMessage: 'Deploying Contract'});
-        var compiled = Store.web3.eth.compile.solidity(contracts.BKCVote.source);
         Actions.Account.unlockAccount({
             password: self.state.adminPassword,
             data: self.state.adminAccountData
@@ -43,8 +42,8 @@ export default class CreateContract extends React.Component {
             Actions.Ethereum.deployContract(
                 info.privateKey,
                 self.state.adminAddress,
-                compiled.BKCVote.code,
-                compiled.BKCVote.info.abiDefinition,
+                contracts.BKCVote.code,
+                contracts.BKCVote.info.abiDefinition,
                 [
                     self.state.electionName,
                     self.state.blockStart,
@@ -73,7 +72,7 @@ export default class CreateContract extends React.Component {
                                     <br/><strong>{receipt.transactionHash}</strong><br></br>
                                 </div>
                             </div>;
-                        Actions.Store.setContract(receipt.contractAddress, compiled.BKCVote.info.abiDefinition);
+                        Actions.Store.setContract(receipt.contractAddress, contracts.BKCVote.info.abiDefinition);
                         self.setState({loading: false, deployed: true, delpoyedAddress: receipt.contractAddress});
                         self._modal.setState({open: true, title: 'Contract Deployed', body: modalBody});
                     }

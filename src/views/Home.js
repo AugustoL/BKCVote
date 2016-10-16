@@ -30,7 +30,6 @@ export default class Home extends React.Component {
 
     updateInfo(){
         var self = this;
-        self.setState({loading: false});
         async.series([
             function(callback) {
                 Actions.Ethereum.getVoters(function(err, voters){
@@ -66,7 +65,6 @@ export default class Home extends React.Component {
 
     render() {
         var self = this;
-        console.log(this.state);
         return(
             <div>
                 <div class="col-xs-12 text-center">

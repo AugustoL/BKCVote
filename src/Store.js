@@ -1,7 +1,8 @@
 import { EventEmitter } from "events";
 import dispatcher from "./Dispatcher";
 
-var packageJson = JSON.parse(require('../package.json'));
+var appConfig = JSON.parse(require('./config.json'));
+var contracts = JSON.parse(require('./contracts.json'));
 
 class AppStore extends EventEmitter {
 	constructor() {
@@ -14,13 +15,13 @@ class AppStore extends EventEmitter {
 			this.contract = JSON.parse(window.localStorage.contract);
 		else
 			this.contract = {
-				address: "",
-				ABI: ""
+				address: appConfig.contractAddress,
+				ABI: contracts.BKCVote.info.abiDefinition
 			}
 		if (window.localStorage.getItem('web3Provider'))
 			this.web3Provider = window.localStorage.web3Provider;
 		else
-			this.web3Provider = packageJson.appConfig.web3Provider;
+			this.web3Provider = appConfig.web3Provider;
 		this.web3 = null;
 		console.log(window.localStorage)
 	}

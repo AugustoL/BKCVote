@@ -48,43 +48,65 @@ export default class Vote extends React.Component {
     submitVote(){
         var self = this;
         self.setState({loading: true});
-        var payloadData = Actions.Ethereum.buildFunctionData([
-            self.state.voteToAddress
-        ], 'vote', Store.contract.ABI)
-        var voteTx = Actions.Ethereum.buildTX({
-            to: Store.contract.address,
-            from : self.state.voterAddress,
-            value: 0,
-            data: payloadData
-        });
-        Actions.Account.sign({
-            password: self.state.voterPassword,
-            data: self.state.voterData
-        },
-        voteTx,
-        function(err, signedTX){
-            Actions.Ethereum.sendTXs([signedTX], function(err){
-                if (err){
-                    var modalBody =
-                        <div class="row modalBody">
+        Actions.Ethereum.getVoterInfo(self.state.voterAddress, function(err, info){
+            if (!info.voted && info.verifier != '0x0000000000000000000000000000000000000000'){
+                var payloadData = Actions.Ethereum.buildFunctionData([
+                    self.state.voteToAddress
+                ], 'vote', Store.contract.ABI)
+                var voteTx = Actions.Ethereum.buildTX({
+                    to: Store.contract.address,
+                    from : self.state.voterAddress,
+                    value: 0,
+                    data: payloadData
+                });
+                Actions.Account.sign({
+                    password: self.state.voterPassword,
+                    data: self.state.voterData
+                },
+                voteTx,
+                function(err, signedTX){
+                    Actions.Ethereum.sendTXs([signedTX], function(err){
+                        if (err){
+                            var modalBody =
+                                <div class="row modalBody">
+                                    <div class="col-xs-12 text-center margin-bottom">
+                                        {err}
+                                    </div>
+                                </div>;
+                            self.setState({loading: false});
+                            self._modal.setState({open: true, title: 'Error', body: modalBody});
+                        } else {
+                            var modalBody =
+                                <div class="row modalBody">
+                                    <div class="col-xs-12 text-center margin-bottom">
+                                        Address Voted
+                                        <br/><strong>{self.state.voteToAddress}</strong><br></br>
+                                    </div>
+                                </div>;
+                            self.setState({loading: false});
+                            self._modal.setState({open: true, title: 'Vote Done', body: modalBody});
+                        }
+                    });
+                });
+            } else {
+                var modalBody =
+                    <div class="row modalBody">
+                        { info.voted ?
                             <div class="col-xs-12 text-center margin-bottom">
-                                {err}
+                                Vote already done.
                             </div>
-                        </div>;
-                    self.setState({loading: false});
-                    self._modal.setState({open: true, title: 'Error', body: modalBody});
-                } else {
-                    var modalBody =
-                        <div class="row modalBody">
+                            : <div/>
+                        }
+                        { info.verifier == '0x0000000000000000000000000000000000000000' ?
                             <div class="col-xs-12 text-center margin-bottom">
-                                Address Voted
-                                <br/><strong>{self.state.voteToAddress}</strong><br></br>
+                                Verifier not set.
                             </div>
-                        </div>;
-                    self.setState({loading: false});
-                    self._modal.setState({open: true, title: 'Vote Done', body: modalBody});
-                }
-            });
+                            : <div/>
+                        }
+                    </div>;
+                self.setState({loading: false});
+                self._modal.setState({open: true, title: 'Error', body: modalBody});
+            }
         });
     }
 

@@ -2,6 +2,11 @@
 
 Blockchain web app, vote safely over a custom ethereum blockchain.
 
+## How it works
+
+In order to work the app needs to be connected to an ethereum node, this node can be mining or not, you need it to be mining or connected with peers if you want to get your transactions processed.
+There is an example network that you can use to see the results of a simulated election of 50 persons, for this you will need to run `npm start` and `npm run geth-console-example` commands together.
+
 ## Install
 
 `npm install`

@@ -53,7 +53,8 @@ module.exports = {
     plugins: [
     new CopyWebpackPlugin([
         { from: __dirname+'/src/assets', to: __dirname+'/build/assets' },
-        { from: __dirname+'/contracts.json', to: __dirname+'/build/contracts.json' },
+        { from: __dirname+'/src/config.json', to: __dirname+'/build/config.json' },
+        { from: __dirname+'/src/contracts.json', to: __dirname+'/build/contracts.json' },
         { from: __dirname+'/src/index.html', to: __dirname+'/build/index.html' }
         ]),
         new webpack.optimize.DedupePlugin(),

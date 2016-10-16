@@ -7,6 +7,7 @@ var fetch = require('node-fetch');
 var ethLightwallet = require('eth-lightwallet');
 var moreEntropy = require('more-entropy');
 var keyStore = ethLightwallet.keyStore;
+var Web3 = require('web3');
 
 const blockchainPath = __dirname+'/blockchain';
 
@@ -17,12 +18,17 @@ if (args.indexOf('--debug') > 0)
     debug = true;
 
 function spanwChild(process, args, callback){
+    var callbackCalled = false;
     var _spanwChild = child.spawn(process, args);
     _spanwChild.stdout.on('data', function(data){
         console.log(`${data}`);
     });
     _spanwChild.stderr.on('data', function(data) {
         console.log(`${data}`);
+        if (callback && !callbackCalled){
+            callback(null);
+            callbackCalled = true;
+        }
     });
     _spanwChild.on('close', function(code) {
         if (debug)
@@ -31,8 +37,6 @@ function spanwChild(process, args, callback){
     _spanwChild.on('exit', function(code) {
         if (debug)
             console.log(`child process exited.`);
-        if (callback)
-            callback(null);
     });
 }
 
@@ -89,24 +93,36 @@ switch (args[0]) {
         });
     break;
     case 'contracts':
-    fs.readFile('contracts/BKCVote.sol', function (err,data) {
-        if (err) {
-            console.error(err);
-        } else {
-            var contracts = {
-                BKCVote: {
-                    source : data.toString('utf-8').replace(/(?:\r\n|\r|\n)/g, '')
-                }
+        console.log('Creating contracts.json file');
+        async.waterfall([
+            function(callback){
+                spanwChild(__dirname+'/go-ethereum/build/bin/geth', [
+                    "--datadir="+blockchainPath,
+                    "--networkid", "12345",
+                    "--nodiscover", "--maxpeers=0",
+                    "--rpc",
+                    "--rpcaddr", "localhost",
+                    "--rpcport", "8545",
+                    "--rpccorsdomain", "*",
+                    "--verbosity=1"
+                ], callback);
+            },
+            function(callback){
+                fs.readFile('contracts/BKCVote.sol', callback);
+            },
+            function(fileData, callback){
+                var web3 = new Web3(new Web3.providers.HttpProvider('http://127.0.0.1:8545'));
+                web3.eth.compile.solidity(fileData.toString(), callback);
+            },
+            function(contracts, callback){
+                fs.writeFile('src/contracts.json', JSON.stringify(contracts, null, '    '), callback);
             }
-            fs.writeFile('src/contracts.json', JSON.stringify(contracts), function (err,data) {
-                if (err) {
-                    console.error(err);
-                } else {
-                    console.log('contracts.json file created.');
-                }
-            })
-        }
-    });
+        ], function(err, results){
+            if (err)
+                console.log('ERR:',err);
+            else
+                console.log('Contracts file created inside src folder');
+        });
     break;
     case 'accounts':
         async.waterfall([

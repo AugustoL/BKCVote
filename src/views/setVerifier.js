@@ -47,73 +47,86 @@ export default class SetVerifier extends React.Component {
     setVerifier(){
         var self = this;
         self.setState({loading: true});
-        var txsToSend = []
-        async.series([
-            function(callback){
-                var payloadData = Actions.Ethereum.buildFunctionData([
-                    self.state.voterAddress,
-                    self.state.verifierAddress
-                ], 'setVerifier', Store.contract.ABI)
-                var setVerifierTx = Actions.Ethereum.buildTX({
-                    to: Store.contract.address,
-                    from : self.state.adminAddress,
-                    value: 0,
-                    data: payloadData,
-                    nonce: Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.adminAddress ) ))
+        var txsToSend = [];
+        Actions.Ethereum.getVoterInfo(self.state.voterAddress, function(err, info){
+            if (info.voted || (info.verifier == '0x0000000000000000000000000000000000000000')){
+                async.series([
+                    function(callback){
+                        var payloadData = Actions.Ethereum.buildFunctionData([
+                            self.state.voterAddress,
+                            self.state.verifierAddress
+                        ], 'setVerifier', Store.contract.ABI)
+                        var setVerifierTx = Actions.Ethereum.buildTX({
+                            to: Store.contract.address,
+                            from : self.state.adminAddress,
+                            value: 0,
+                            data: payloadData,
+                            nonce: Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.adminAddress ) ))
+                        });
+                        Actions.Account.sign({
+                            password: self.state.adminPassword,
+                            data: self.state.adminAccounutData
+                        }, setVerifierTx, function(err, txSigned){
+                            txsToSend.push(txSigned);
+                            callback(err);
+                        });
+                    },
+                    function(callback){
+                        var sendToVoter = Actions.Ethereum.buildTX({
+                            to: self.state.verifierAddress,
+                            from : self.state.adminAddress,
+                            value: Store.web3.toWei('0.005', 'ether'),
+                            nonce: Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.adminAddress ) )+1)
+                        });
+                        Actions.Account.sign({
+                            password: self.state.adminPassword,
+                            data: self.state.adminAccounutData
+                        }, sendToVoter, function(err, txSigned){
+                            txsToSend.push(txSigned);
+                            callback(err);
+                        });
+                    }
+                ], function(error){
+                    if (error)
+                        console.error(error);
+                    Actions.Ethereum.sendTXs(txsToSend, function(err){
+                        if (err){
+                            var modalBody =
+                                <div class="row modalBody">
+                                    <div class="col-xs-12 text-center margin-bottom">
+                                        {err}
+                                    </div>
+                                </div>;
+                            self.setState({loading: false});
+                            self._modal.setState({open: true, title: 'Error', body: modalBody});
+                        } else {
+                            var modalBody =
+                                <div class="row modalBody">
+                                    <div class="col-xs-12 text-center margin-bottom">
+                                        Verifier
+                                        <br/><strong>{self.state.verifierAddress}</strong><br></br>
+                                    </div>
+                                    <div class="col-xs-12 text-center margin-bottom">
+                                        Voter
+                                        <br/><strong>{self.state.voterAddress}</strong><br></br>
+                                    </div>
+                                </div>;
+                            self.setState({loading: false});
+                            self._modal.setState({open: true, title: 'Verifier Set', body: modalBody});
+                        }
+                    });
                 });
-                Actions.Account.sign({
-                    password: self.state.adminPassword,
-                    data: self.state.adminAccounutData
-                }, setVerifierTx, function(err, txSigned){
-                    txsToSend.push(txSigned);
-                    callback(err);
-                });
-            },
-            function(callback){
-                var sendToVoter = Actions.Ethereum.buildTX({
-                    to: self.state.verifierAddress,
-                    from : self.state.adminAddress,
-                    value: Store.web3.toWei('0.005', 'ether'),
-                    nonce: Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.adminAddress ) )+1)
-                });
-                Actions.Account.sign({
-                    password: self.state.adminPassword,
-                    data: self.state.adminAccounutData
-                }, sendToVoter, function(err, txSigned){
-                    txsToSend.push(txSigned);
-                    callback(err);
-                });
+            } else {
+                var modalBody =
+                    <div class="row modalBody">
+                        <div class="col-xs-12 text-center margin-bottom">
+                            Verifier already set.
+                        </div>
+                    </div>;
+                self.setState({loading: false});
+                self._modal.setState({open: true, title: 'Error', body: modalBody});
             }
-        ], function(error){
-            if (error)
-                console.error(error);
-            Actions.Ethereum.sendTXs(txsToSend, function(err){
-                if (err){
-                    var modalBody =
-                        <div class="row modalBody">
-                            <div class="col-xs-12 text-center margin-bottom">
-                                {err}
-                            </div>
-                        </div>;
-                    self.setState({loading: false});
-                    self._modal.setState({open: true, title: 'Error', body: modalBody});
-                } else {
-                    var modalBody =
-                        <div class="row modalBody">
-                            <div class="col-xs-12 text-center margin-bottom">
-                                Verifier
-                                <br/><strong>{self.state.verifierAddress}</strong><br></br>
-                            </div>
-                            <div class="col-xs-12 text-center margin-bottom">
-                                Voter
-                                <br/><strong>{self.state.voterAddress}</strong><br></br>
-                            </div>
-                        </div>;
-                    self.setState({loading: false});
-                    self._modal.setState({open: true, title: 'Verifier Set', body: modalBody});
-                }
-            });
-        })
+        });
     }
 
     render() {

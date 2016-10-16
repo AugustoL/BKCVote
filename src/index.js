@@ -34,7 +34,10 @@ import Accounts from "./views/Accounts";
 //Actions
 import * as Actions from "./actions";
 
-Actions.Config.configure('http://localhost:8545');
+import Store from "./Store";
+var appConfig = JSON.parse(require('./config.json'));
+
+Actions.Config.configure(Store.web3Provider || appConfig.web3Provider);
 
 //CSS
 require('../node_modules/bootstrap/dist/css/bootstrap.css');

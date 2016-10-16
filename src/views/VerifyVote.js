@@ -48,44 +48,57 @@ export default class VerifyVote extends React.Component {
     verifyVote(){
         var self = this;
         self.setState({loading: true});
-        var payloadData = Actions.Ethereum.buildFunctionData([
-            self.state.voterAddress
-        ], 'verify', Store.contract.ABI)
-        var verifyTx = Actions.Ethereum.buildTX({
-            to: Store.contract.address,
-            from : self.state.verfifierAddress,
-            value: 0,
-            data: payloadData,
-            nonce : nonce
-        });
-        nonce ++;
-        Actions.Account.sign({
-            password: self.state.verifierPassword,
-            data: self.state.verifierData
-        },
-        verifyTx,
-        function(err, signedTX){
-            Actions.Ethereum.sendTXs([signedTX], function(err){
-                if (err){
-                    var modalBody =
-                        <div class="row modalBody">
-                            <div class="col-xs-12 text-center margin-bottom">
-                                {err}
-                            </div>
-                        </div>;
-                    self.setState({loading: false});
-                    self._modal.setState({open: true, title: 'Error', body: modalBody});
-                } else {
-                    var modalBody =
-                        <div class="row modalBody">
-                            <div class="col-xs-12 text-center margin-bottom">
-                                <h2>Verified vote of address {self.state.voterAddress}</h2>
-                            </div>
-                        </div>;
-                    self.setState({loading: false});
-                    self._modal.setState({open: true, title: 'Vote Verified', body: modalBody});
-                }
-            });
+        Actions.Ethereum.getVoterInfo(self.state.voterAddress, function(err, info){
+            if (info.voted || (info.verifier != self.state.verfifierAddress)){
+                var payloadData = Actions.Ethereum.buildFunctionData([
+                    self.state.voterAddress
+                ], 'verify', Store.contract.ABI)
+                var verifyTx = Actions.Ethereum.buildTX({
+                    to: Store.contract.address,
+                    from : self.state.verfifierAddress,
+                    value: 0,
+                    data: payloadData,
+                    nonce : nonce
+                });
+                nonce ++;
+                Actions.Account.sign({
+                    password: self.state.verifierPassword,
+                    data: self.state.verifierData
+                },
+                verifyTx,
+                function(err, signedTX){
+                    Actions.Ethereum.sendTXs([signedTX], function(err){
+                        if (err){
+                            var modalBody =
+                                <div class="row modalBody">
+                                    <div class="col-xs-12 text-center margin-bottom">
+                                        {err}
+                                    </div>
+                                </div>;
+                            self.setState({loading: false});
+                            self._modal.setState({open: true, title: 'Error', body: modalBody});
+                        } else {
+                            var modalBody =
+                                <div class="row modalBody">
+                                    <div class="col-xs-12 text-center margin-bottom">
+                                        <h2>Verified vote of address {self.state.voterAddress}</h2>
+                                    </div>
+                                </div>;
+                            self.setState({loading: false});
+                            self._modal.setState({open: true, title: 'Vote Verified', body: modalBody});
+                        }
+                    });
+                });
+            } else {
+                var modalBody =
+                    <div class="row modalBody">
+                        <div class="col-xs-12 text-center margin-bottom">
+                            Cant verify the address.
+                        </div>
+                    </div>;
+                self.setState({loading: false});
+                self._modal.setState({open: true, title: 'Error', body: modalBody});
+            }
         });
     }
 

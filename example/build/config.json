@@ -1,0 +1,4 @@
+{
+    "web3Provider": "https://localhost:8545",
+    "contractAddress": "0x12456fd540815ca62a61f4355382f5d3ee52f9c8"
+}

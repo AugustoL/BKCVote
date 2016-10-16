@@ -21,6 +21,8 @@ export function getNodeInfo(){
         return {
             block: Store.web3.eth.blockNumber,
             connected: Store.web3.isConnected(),
+            network: Store.web3.version.network,
+            version: Store.web3.version.ethereum,
             hashrate: Store.web3.eth.hashrate,
             peers: Store.web3.net.peerCount,
             syncing: Store.web3.eth.syncing
@@ -30,6 +32,8 @@ export function getNodeInfo(){
         return {
             block: 0,
             connected: false,
+            network: '',
+            version: '',
             hashrate: 0,
             peers: 0,
             syncing: false
@@ -46,12 +50,18 @@ export function waitForBlock(block, callback) {
     }, 1000 );
 }
 
+export function getBalance(address){
+    return parseFloat(Store.web3.eth.getBalance(address))/1000000000000000000;
+}
+
 function waitForTX(tx, callback) {
     var wait = setInterval( function() {
-        if ( isTXMined(tx)) {
-            clearInterval(wait);
-            callback();
-        }
+        try{
+            if ( isTXMined(tx)) {
+                clearInterval(wait);
+                callback();
+            }
+        } catch(e){};
     }, 1000 );
 }
 
@@ -231,7 +241,7 @@ export function buildTX(data){
         to: data.to || '0x0000000000000000000000000000000000000000',
         from: data.from,
         value: data.value ? Store.web3.toHex(data.value) : '0x0',
-        data: data.data ? Store.web3.toHex(data.data) : '0x0'
+        data: data.data ? Store.web3.toHex(data.data) : '0x'
     }) + 50000;
     var rawTx = {
         nonce: data.nonce ? Store.web3.toHex(data.nonce) : Store.web3.toHex(parseInt(Store.web3.eth.getTransactionCount(data.from))),
@@ -240,7 +250,7 @@ export function buildTX(data){
         to: data.to || '0x0000000000000000000000000000000000000000',
         from: data.from,
         value: data.value ? Store.web3.toHex(data.value) : '0x0',
-        data: data.data ? Store.web3.toHex(data.data) : '0x0'
+        data: data.data ? Store.web3.toHex(data.data) : '0x'
     };
     console.log('TX:',rawTx);
     var tx = new Tx.default(rawTx);
@@ -255,7 +265,7 @@ export function signTX(tx, pvKey){
 }
 
 export function sendTXs(txs, callback){
-    async.eachOfLimit(txs, 10, function(tx, key, sendCallback){
+    async.eachOfLimit(txs, 50, function(tx, key, sendCallback){
         Store.web3.eth.sendRawTransaction(tx, function(err, hash){
             if (err){
                 console.error(err);
