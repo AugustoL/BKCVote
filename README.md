@@ -69,10 +69,10 @@ Run `npm run build` to build the production version.
 
 ## TO DO
 
+- [x] Production example using testnet.
 - [ ] Smart Contract for a voter, with restricted access and only able to send founds to a valid contract.
 - [ ] Smart Contract to manage the valid contracts of the app and know if the contract address belong to the BKCVote app.
 - [ ] Better storage/encryption of the votes, right now they are stored on a private variable inside the contract data.
-- [ ] Production example using testnet.
 - [ ] Support more languages.
 - [ ] Seed voters and verifiers accounts with the minimum and necessary balance using send() from main contract.
 - [ ] Better documentation.

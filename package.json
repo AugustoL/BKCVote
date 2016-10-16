@@ -3,7 +3,7 @@
   "repository": "bkcvote.org",
   "description": "BKCVote App",
   "authors": "Augusto Lemble <me@augustolemble.com>",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "webpack-prod.config.js",
   "scripts": {
     "start": "webpack-dev-server --config webpack-dev.config.js --content-base src --inline --hot",
