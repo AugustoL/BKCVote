@@ -12,7 +12,6 @@
     "bkc-mine": "node blockchain.js mine",
     "bkc-init": "node blockchain.js init",
     "bkc-accounts": "node blockchain.js accounts",
-    "bkc-contracts": "node blockchain.js contracts",
     "bkc-clean": "rm -R blockchain/geth",
     "geth-console": "go-ethereum/build/bin/geth --networkid 123456 --datadir=blockchain --rpc --rpcaddr=localhost --rpcport 8545 --rpccorsdomain=* --nodiscover --maxpeers=0 console",
     "geth-console-example": "go-ethereum/build/bin/geth --networkid 123456 --datadir=example/blockchain --rpc --rpcaddr=localhost --rpcport 8545 --rpccorsdomain=* --nodiscover --maxpeers=0 console"

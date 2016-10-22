@@ -7,7 +7,6 @@ var fetch = require('node-fetch');
 var ethLightwallet = require('eth-lightwallet');
 var moreEntropy = require('more-entropy');
 var keyStore = ethLightwallet.keyStore;
-var Web3 = require('web3');
 
 const blockchainPath = __dirname+'/blockchain';
 
@@ -90,38 +89,6 @@ switch (args[0]) {
                 "--mine",
                 "init", blockchainPath+"/genesis.json"
             ])
-        });
-    break;
-    case 'contracts':
-        console.log('Creating contracts.json file');
-        async.waterfall([
-            function(callback){
-                spanwChild(__dirname+'/go-ethereum/build/bin/geth', [
-                    "--datadir="+blockchainPath,
-                    "--networkid", "12345",
-                    "--nodiscover", "--maxpeers=0",
-                    "--rpc",
-                    "--rpcaddr", "localhost",
-                    "--rpcport", "8545",
-                    "--rpccorsdomain", "*",
-                    "--verbosity=1"
-                ], callback);
-            },
-            function(callback){
-                fs.readFile('contracts/BKCVote.sol', callback);
-            },
-            function(fileData, callback){
-                var web3 = new Web3(new Web3.providers.HttpProvider('http://127.0.0.1:8545'));
-                web3.eth.compile.solidity(fileData.toString(), callback);
-            },
-            function(contracts, callback){
-                fs.writeFile('src/contracts.json', JSON.stringify(contracts, null, '    '), callback);
-            }
-        ], function(err, results){
-            if (err)
-                console.log('ERR:',err);
-            else
-                console.log('Contracts file created inside src folder');
         });
     break;
     case 'accounts':

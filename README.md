@@ -43,12 +43,6 @@ This task create the amount of accounts requested in the same way it does on the
 
 This command will delete all the blockchain data, use it if you want to start a new blockchain from genesis block, after running this command you will need to init the blockchain before start mining with `npm run bkc-init && npm run bkc-mine`.
 
-#### Contracts
-
-`npm run bkc-contracts`
-
-This task will take all the contracts from the ./contracts folder and add copy the source code on the contracts.json file to be readable by the app.
-
 ## Create Simulated Election
 
 1. Remove all content on blockchain/geth folder, generate the accounts, init the genesis block and start mining:
