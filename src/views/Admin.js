@@ -33,16 +33,19 @@ export default class Admin extends React.Component {
                     <h1 class="title">Admin Options</h1>
                 </div>
                 <div class="col-xs-12 text-center">
-                    <Link to="createContract" class="cursor-pointer"><h2 class="title">Create Contract</h2></Link>
+                    <Link to="createContract" class="cursor-pointer"><h2 class="margin-top margin-bottom">Create Contract</h2></Link>
                 </div>
                 <div class="col-xs-12 text-center">
-                    <Link to="addVoter" class="cursor-pointer"><h2 class="title">Add Voter</h2></Link>
+                    <Link to="addVoter" class="cursor-pointer"><h2 class="margin-top margin-bottom">Add Voter</h2></Link>
                 </div>
                 <div class="col-xs-12 text-center">
-                    <Link to="setVerifier" class="cursor-pointer"><h2 class="title">Set Verifier</h2></Link>
+                    <Link to="setVerifier" class="cursor-pointer"><h2 class="margin-top margin-bottom">Set Verifier</h2></Link>
                 </div>
                 <div class="col-xs-12 text-center">
-                    <Link to="addPostulant" class="cursor-pointer"><h2 class="title">Add Postulant</h2></Link>
+                    <Link to="addPostulant" class="cursor-pointer"><h2 class="margin-top margin-bottom">Add Postulant</h2></Link>
+                </div>
+                <div class="col-xs-12 text-center">
+                    <Link to="changeStage" class="cursor-pointer"><h2 class="margin-top margin-bottom">Change Stage</h2></Link>
                 </div>
             </div>
         )

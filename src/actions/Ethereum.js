@@ -92,58 +92,57 @@ function parseInfoVoter(info){
 
 function parsePostulantInfo(info){
     return {
-        address: info[0],
+        id : parseInt(info[0]),
         name : Store.web3.toAscii(info[1]).replace(/[^\w\s]/gi, ''),
-        surename : Store.web3.toAscii(info[2]).replace(/[^\w\s]/gi, ''),
-        party : Store.web3.toAscii(info[3]).replace(/[^\w\s]/gi, ''),
-        votes : parseInt(info[4])
+        party : Store.web3.toAscii(info[2]).replace(/[^\w\s]/gi, ''),
+        votes : parseInt(info[3])
     }
 }
 
 export function getContractInfo(callback) {
-    async.series([
-        function(callback) {
-            Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).blockStart.call(callback)
-        },
-        function(callback) {
-            Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).blockEnd.call(callback)
-        },
-        function(callback) {
-            Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).electionName.call(callback)
-        },
-        function(callback) {
-            Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).getVotersCount.call(callback)
-        },
-        function(callback) {
-            getPostulants(callback);
-        },
-        function(callback) {
-            Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).votesDone.call(callback)
-        },
-        function(callback) {
-            Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).votesToVerify.call(callback)
-        },
-        function(callback) {
-            Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).owner.call(callback)
-        }
-    ],
-    function(err, results) {
-        if (err)
-            callback(err, null);
-        else {
-            callback(null, {
-                blockStart: parseInt(results[0]),
-                blockEnd: parseInt(results[1]),
-                electionName: results[2],
-                totalVoters: parseInt(results[3])-1,
-                votesToBeDone: parseInt(results[3])-1-parseInt(results[5]),
-                postulants: results[4],
-                votesDone: parseInt(results[5]),
-                votesToVerify: parseInt(results[6]),
-                owner: results[7]
-            })
-        }
-    });
+    try {
+        async.series([
+            function(callback) {
+                Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).stage.call(callback)
+            },
+            function(callback) {
+                Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).electionName.call(callback)
+            },
+            function(callback) {
+                Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).getVotersCount.call(callback)
+            },
+            function(callback) {
+                Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).votesDone.call(callback)
+            },
+            function(callback) {
+                Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).votesToVerify.call(callback)
+            },
+            function(callback) {
+                Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).owner.call(callback)
+            },
+            function(callback) {
+                callback(null, Store.web3.eth.getBalance(Store.contract.address));
+            }
+        ],
+        function(err, results) {
+            if (err)
+                callback(err, null);
+            else {
+                callback(null, {
+                    stage: parseInt(results[0]),
+                    electionName: results[1],
+                    totalVoters: parseInt(results[2])-1,
+                    votesToBeDone: parseInt(results[2])-1-parseInt(results[3]),
+                    votesDone: parseInt(results[3]),
+                    votesToVerify: parseInt(results[4]),
+                    owner: results[5],
+                    balance: parseInt(results[6])
+                })
+            }
+        });
+    } catch(e){
+        callback(null, null);
+    }
 }
 
 export function getContractEvents(callback){
@@ -203,6 +202,20 @@ export function getPostulants(callback) {
     })
 }
 
+export function getPostulant(id, callback) {
+    Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).postulantsIndex.call(id, function(err, pos){
+        if (err)
+            callback(err, null);
+        else
+            Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).postulants.call(pos, function(err, info){
+                if (err)
+                    callback(err, null);
+                else
+                    callback(err, parsePostulantInfo(info));
+            });
+    });
+}
+
 export function sendContractTX(pvKey, from, to, ABI, functionName, args, value, callback) {
     var payloadData = buildFunctionData(args, functionName, ABI)
     var tx = buildTX({
@@ -237,7 +250,6 @@ export function buildTX(data){
     var estimatedGas = Store.web3.eth.estimateGas({
         nonce: data.nonce ? Store.web3.toHex(data.nonce) : Store.web3.toHex(parseInt(Store.web3.eth.getTransactionCount(data.from))),
         gasPrice: Store.web3.toHex(Store.web3.eth.gasPrice),
-        gasLimit: Store.web3.toHex(estimatedGas),
         to: data.to || '0x0000000000000000000000000000000000000000',
         from: data.from,
         value: data.value ? Store.web3.toHex(data.value) : '0x0',
@@ -275,13 +287,13 @@ export function sendTXs(txs, callback){
                 waitForTX(hash, function(){
                     Store.web3.eth.getTransactionReceipt(hash, function(err, receipt){
                         console.log('Receipt:', receipt);
-                        if (receipt.logs.length > 0)
+                        if ((receipt.logs.length > 0) && (receipt.logs[0].topics[0] == '0xb48fb6cf86d9c47e2268650bac422c18104332e413943278776f488788b991da'))
                             switch (receipt.logs[0].data) {
                                 case '0x0000000000000000000000000000000000000000000000000000000000000000':
                                     sendCallback('Unauthorized Access', receipt);
                                 break;
                                 case '0x0000000000000000000000000000000000000000000000000000000000000001':
-                                    sendCallback('Invalid Block Access', receipt);
+                                    sendCallback('Invalid Block Status', receipt);
                                 break;
                                 case '0x0000000000000000000000000000000000000000000000000000000000000002':
                                     sendCallback('Invalid Address', receipt);
@@ -301,6 +313,12 @@ export function sendTXs(txs, callback){
                                 case '0x0000000000000000000000000000000000000000000000000000000000000007':
                                     sendCallback('Verifier not set', receipt);
                                 break;
+                                case '0x0000000000000000000000000000000000000000000000000000000000000008':
+                                    sendCallback('Postulant already added', receipt);
+                                break;
+                                case '0x0000000000000000000000000000000000000000000000000000000000000009':
+                                    sendCallback('Invalid new stage', receipt);
+                                break;
                                 default:
                                     sendCallback(null, receipt);
                                 break;
@@ -314,6 +332,27 @@ export function sendTXs(txs, callback){
     },
     callback);
 }
+
+export function callTX(tx, callback){
+    Store.web3.eth.call(tx, function(err, output){
+        if (!output) {
+            callback(err, '');
+        } else {
+            console.log(output);
+            output = output.length >= 2 ? output.slice(2) : output;
+            var outputTypes = lodash.default.find(contract.ABI || Store.contract.ABI, { name: contract.functionName }).outputs.map(function (i) {
+                return i.type;
+            });
+            if (output.length > 2){
+                var result = coder.default.decodeParams(outputTypes, output);
+                callback(err, result);
+            } else {
+                callback(err, []);
+            }
+        }
+    });
+}
+
 
 export function deployContract(pvKey, from, contractData, abi, params, value, callback) {
     var bytes = abi.filter(function (json) {

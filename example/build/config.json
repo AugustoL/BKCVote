@@ -1,4 +1,4 @@
 {
-    "web3Provider": "https://localhost:8545",
-    "contractAddress": "0x12456fd540815ca62a61f4355382f5d3ee52f9c8"
+    "web3Provider": "http://localhost:8545",
+    "contractAddress": "0x8dbecf2f66de3b710e29f106139d29cc1865a9cc"
 }

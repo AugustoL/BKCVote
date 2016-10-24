@@ -10,7 +10,6 @@ var keyStore = ethLightwallet.keyStore;
 
 const blockchainPath = __dirname+'/blockchain';
 
-const accounts = require('./blockchain/accounts');
 var debug = false;
 
 if (args.indexOf('--debug') > 0)
@@ -66,7 +65,7 @@ switch (args[0]) {
                 "--rpccorsdomain", "*",
                 "--verbosity=6",
                 "--nat", "extip:"+ip,
-                "--etherbase", accounts.admin.address,
+                "--etherbase", require('./blockchain/accounts').admin.address,
                 "--mine",
                 "--minerthreads", "1"
             ])

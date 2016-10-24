@@ -1,6 +1,8 @@
 
 import * as Tx from "ethereumjs-tx";
 import async from 'async';
+import * as lodash from "lodash";
+import * as coder from '../../node_modules/web3/lib/solidity/coder';
 import ethLightwallet from 'eth-lightwallet';
 import moreEntropy from 'more-entropy'
 var keyStore = ethLightwallet.keyStore;
@@ -40,7 +42,7 @@ export default class Account {
                         const data = new Buffer(ks.getSeed(pwDerivedKey)+";"+ks.salt).toString('base64');
                         var fileURL = window.URL.createObjectURL(
                             new Blob([
-                                "<div style=\"border: 5px solid #000;margin: auto;margin-top: 20px;padding: 20px;text-align: center;font-size: 25px;\"> <div> Your address <br/><strong>0x"+addr[0]+"</strong> </div> <div> Your seed phrase <br/><strong>"+seed+"</strong> </div> <div> <h3><strong> Address QR </strong></h3> <img style=\"width:300px;height:300px\" src=\"data:image/png;base64,"+qrImage.imageSync(addr[0], {type: 'png', margin: 1}).toString('base64')+"\" /> </div> <div> <h3><strong> Account Data QR </strong></h3> <img style=\"width:300px;height:300px\" src=\"data:image/png;base64,"+qrImage.imageSync(data, {type: 'png', margin: 1}).toString('base64')+"\" /> </div> </div>"
+                                "<div style=\"border: 5px solid #000;margin: auto;margin-top: 20px;padding: 20px;text-align: center;font-size: 25px;\"> <div> Your address <br/><strong>0x"+addr[0]+"</strong> </div> <div> Your seed phrase <br/><strong>"+seed+"</strong> </div> <div> <h3><strong> Address QR </strong></h3> <img style=\"width:300px;height:300px\" src=\"data:image/png;base64,"+qrImage.imageSync('0x'+addr[0], {type: 'png', margin: 1}).toString('base64')+"\" /> </div> <div> <h3><strong> Account Data QR </strong></h3> <img style=\"width:300px;height:300px\" src=\"data:image/png;base64,"+qrImage.imageSync(data, {type: 'png', margin: 1}).toString('base64')+"\" /> </div> </div>"
                             ], {type: 'html'})
                         );
                         var newAccount = {
@@ -109,12 +111,12 @@ export default class Account {
         });
     }
 
-    static call(account, tx, callback){
+    static call(data, callback){
         console.log('Unlocking account and making call');
         ethLightwallet.keystore.createVault({
-            password: account.password,
-            seedPhrase: new Buffer( account.data , 'base64').toString('ascii').split(';')[0],
-            salt: new Buffer( account.data , 'base64').toString('ascii').split(';')[1]
+            password: data.password,
+            seedPhrase: new Buffer( data.account , 'base64').toString('ascii').split(';')[0],
+            salt: new Buffer( data.account , 'base64').toString('ascii').split(';')[1]
         }, function(err, ks) {
             var accountWeb3 = new Web3();
             var web3Provider = new HookedWeb3Provider({
@@ -122,7 +124,26 @@ export default class Account {
               transaction_signer: ks
             });
             accountWeb3.setProvider(web3Provider);
-            accountWeb3.eth.call(tx, callback);
+            accountWeb3.eth.call({
+                from: data.from,
+                to: data.to || Store.contract.address,
+                data: data.payload
+            }, function(err, output){
+                if (!output) {
+                    callback(err, '');
+                } else {
+                    output = output.length >= 2 ? output.slice(2) : output;
+                    var outputTypes = lodash.default.find(data.ABI || Store.contract.ABI, { name: data.functionName }).outputs.map(function (i) {
+                        return i.type;
+                    });
+                    if (output.length > 2){
+                        var result = coder.default.decodeParams(outputTypes, output);
+                        callback(err, result);
+                    } else {
+                        callback(err, []);
+                    }
+                }
+            });
         });
     }
 

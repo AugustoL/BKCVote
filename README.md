@@ -5,12 +5,23 @@ Blockchain web app, vote safely over a custom ethereum blockchain.
 ## How it works
 
 In order to work the app needs to be connected to an ethereum node, this node can be mining or not, you need it to be mining or connected with peers if you want to get your transactions processed.
-There is an example network that you can use to see the results of a simulated election of 50 persons, for this you will need to run `npm start` and `npm run geth-console-example` commands together.
+There is an example network that you can use to see the results of a simulated election of 100 persons, for this you will need to run `npm start` and `npm run geth-console-example` commands together.
 
 ## Install
 
+`git clone https://github.com/AugustoL/BKCVote --recursive`
+
 `npm install`
 
+##Submodules
+
+### Go-Ethereum
+
+If you need to use the blockchain operations you can build from source the go-ethereum app, follow the instructions here: https://github.com/ethereum/go-ethereum/wiki/Building-Ethereum
+
+### Solcompiler-js
+
+Is an app that runs a script that build teh contracts.json file, for more information go here: https://github.com/AugustoL/solcompiler-js
 ## Blockchain Operations
 
 #### Console
@@ -49,9 +60,9 @@ This command will delete all the blockchain data, use it if you want to start a 
 
 `npm bkc-clean && npm bkc-accounts 10 && npm bkc-init && npm bkc-mine`
 
-2. Go to the simulate view and put a reasonable value to blockStart and blockEnd, you only will be able to add the voters before blockStart equals actual block and you will be able to do the election between blockStart and blockEnd, so choose your values with precaution, the actual blockNumber will be displayed on the right side of the navbar.
+2. Go to the simulate view, you only will be able to add the voters, postulants ans set verifiers when teh stage of the election is 0.
 
-3. Open the console on browser dev tools, deploy the contract, create the accounts, add the voters, postulants and set the verifiers. Simulate the election when the voter as and postulant are added with their verifiers, take in mind you have to simulate the election after blockStart number, once the election is done you can view the results.
+3. Open the console on browser dev tools, deploy the contract, create the accounts, add the voters, postulants and set the verifiers. Simulate the election when the voter as and postulant are added with their verifiers, take in mind you have thange the state of the elction before and after simulate and verify the votes, once the election is done you can view the results.
 
 ## Develop
 
@@ -66,9 +77,9 @@ Run `npm run build` to build the production version.
 - [ ] Smart Contract for a voter, with restricted access and only able to send founds to a valid contract.
 - [ ] Smart Contract to manage the valid contracts of the app and know if the contract address belong to the BKCVote app.
 - [ ] Better storage/encryption of the votes, right now they are stored on a private variable inside the contract data.
-- [ ] Production example using testnet.
+- [x] Production example using testnet.
 - [ ] Support more languages.
-- [ ] Seed voters and verifiers accounts with the minimum and necessary balance using send() from main contract.
+- [x] Seed voters and verifiers accounts with the minimum and necessary balance using send() from main contract.
 - [ ] Better documentation.
 
 ### Donations
