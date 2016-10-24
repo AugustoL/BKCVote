@@ -6,7 +6,7 @@ import async from 'async';
 import * as Actions from "../actions";
 import Store from "../Store";
 
-var appAccounts = JSON.parse(require('../../blockchain/accounts.json'));
+var appAccounts = JSON.parse(require('../accounts.json'));
 
 export default class Accounts extends React.Component {
 

@@ -17,7 +17,7 @@ body{
 	overflow: auto;
 	font-family: 'Lato';
 	color: #001029;
-	background-image: url('/assets/background.png');
+	background-image: url('assets/background.png');
 }
 
 #contentBox{

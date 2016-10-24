@@ -133,7 +133,14 @@ switch (args[0]) {
                         if (err) {
                             console.error(err);
                         } else {
-                            console.log('accountKeys file created.');
+                            console.log('accounts file on blockchain folder created.');
+                        }
+                    })
+                    fs.writeFile(blockchainPath+'/../src/accounts.json', JSON.stringify(accounts, null, '    '), function (err,data) {
+                        if (err) {
+                            console.error(err);
+                        } else {
+                            console.log('accounts file on src folder created.');
                         }
                     })
                     console.log('Creating genesis..');
