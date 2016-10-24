@@ -1,4 +1,12 @@
 
+
+@font-face {
+    font-family: 'Lato';
+	font-style: 'normal';
+	font-weight: 'normal';
+    src: url('assets/fonts/Lato/Lato-Regular.ttf');
+}
+
 html{
 	height: 100%;
 	overflow: hidden;
@@ -7,7 +15,7 @@ html{
 body{
 	height: 100%;
 	overflow: auto;
-	font-family: 'FontAwesome';
+	font-family: 'Lato';
 	color: #001029;
 	background-image: url('/assets/background.png');
 }

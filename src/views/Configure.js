@@ -26,7 +26,8 @@ export default class Configure extends React.Component {
 
     componentWillMount() {
         var self = this;
-        if (Store.contract.address != ""){
+        console.log(Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address))
+        if (Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address)){
             Actions.Ethereum.getContractInfo(function(err, info){
                 if (err)
                     console.error(err);
@@ -39,7 +40,7 @@ export default class Configure extends React.Component {
     configure(){
         var self = this;
         Actions.Config.configure(self.state.web3Provider);
-        Actions.Store.setContract(self.state.contractAddress, contracts.BKCVote.info.abiDefinition);
+        Actions.Store.setContract(self.state.contractAddress, JSON.parse(contracts.BKCVote.interface));
         window.location.reload();
     }
 

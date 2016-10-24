@@ -34,19 +34,19 @@ export default class Home extends React.Component {
             function(callback) {
                 Actions.Ethereum.getVoters(function(err, voters){
                     console.log('Voters: ', voters);
-                    callback(null, voters);
+                    callback(err, voters);
                 });
             },
             function(callback) {
                 Actions.Ethereum.getPostulants(function(err, postulants){
                     console.log('Postulants: ', postulants);
-                    callback(null, postulants);
+                    callback(err, postulants);
                 });
             },
             function(callback) {
                 Actions.Ethereum.getContractInfo(function(err, info){
                     console.log('Contract info: ', info);
-                    callback(null, info);
+                    callback(err, info);
                 });
             }
         ],
@@ -89,23 +89,23 @@ export default class Home extends React.Component {
                 </div>
                 :
                     <div>
-                        <div class="col-xs-3 text-center">
+                        <div class="col-xs-12 text-center">
+                            <h3>{self.state.contractInfo.electionName}</h3>
+                        </div>
+                        <div class="col-xs-4 text-center">
                             <h4>{self.state.info.hashrate} Hashrate</h4>
                         </div>
-                        <div class="col-xs-3 text-center">
+                        <div class="col-xs-4 text-center">
                             <h4>{self.state.info.peers} Peers</h4>
                         </div>
-                        <div class="col-xs-3 text-center">
-                            <h4>Start Block #{self.state.contractInfo.blockStart}</h4>
-                        </div>
-                        <div class="col-xs-3 text-center">
-                            <h4>End Block #{self.state.contractInfo.blockEnd}</h4>
+                        <div class="col-xs-4 text-center">
+                            <h4>Election Stage {self.state.contractInfo.stage}</h4>
                         </div>
                         <div class="col-xs-6 text-center">
                             <h3>{self.state.contractInfo.totalVoters} Voters</h3>
                         </div>
                         <div class="col-xs-6 text-center">
-                            <h3>{self.state.contractInfo.postulants.length} Postulants</h3>
+                            <h3>{self.state.postulants.length} Postulants</h3>
                         </div>
                         <div class="col-xs-4 text-center">
                             <h3>{self.state.contractInfo.votesToBeDone} Votes To Be Done</h3>
@@ -128,7 +128,7 @@ export default class Home extends React.Component {
                                     </tr>
                                 </thead>
                                     <tbody>
-                                    {self.state.contractInfo.postulants.map(function(postulant, index){
+                                    {(self.state.postulants.length > 0) ? self.state.postulants.map(function(postulant, index){
                                         return (
                                             <tr key={index}>
                                                 <th>{index+1}</th>
@@ -137,7 +137,7 @@ export default class Home extends React.Component {
                                                 <td>{postulant.votes}</td>
                                             </tr>
                                         );
-                                    })}
+                                    }) : <div/>}
                                 </tbody>
                             </table>
                         </div>
@@ -149,11 +149,11 @@ export default class Home extends React.Component {
                                         <th># ID</th>
                                         <th class="text-center">First Name</th>
                                         <th class="text-center">Last Name</th>
-                                        <th class="text-center">Status</th>
+                                        <th class="text-center">Vote Status</th>
                                     </tr>
                                 </thead>
                                     <tbody>
-                                    {self.state.voters.map(function(voter, index){
+                                    {(self.state.voters.length > 0) ? self.state.voters.map(function(voter, index){
                                         return (
                                             <tr key={index}>
                                                 <th>{voter.id}</th>
@@ -162,7 +162,7 @@ export default class Home extends React.Component {
                                                 <td>{(!voter.voted) ? "Not Voted" : (!voter.verified) ? "Not Verified" : "Voted"}</td>
                                             </tr>
                                         );
-                                    })}
+                                    }) : <div/>}
                                 </tbody>
                             </table>
                         </div>

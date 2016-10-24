@@ -8,88 +8,75 @@ import Store from "../Store";
 import * as Actions from "../actions";
 import Loader from "../components/Loader";
 import Modal from '../components/Modal';
-import QRReader from "../components/QRReader";
+import Input from "../components/Input";
 
 export default class AddPostulant extends React.Component {
 
     constructor() {
         super();
         this.state = {
-            loading: false,
-            postulantAddress: "",
-            partyName: "",
-            adminAccounutData: "",
-            adminPassword: "",
-            showQRPostulant: false,
-            showQRAccount: false,
-            hidePassword: true,
-            voters: [],
-            votersOptions : []
-        }
-    }
-
-    componentWillMount() {
-        var self = this;
-        if (Store.contract.address != ""){
-            Actions.Ethereum.getVoters(function(err, voters){
-                if (err)
-                    console.error(err);
-                else {
-                    var votersOptions = [];
-                    for (var i = 0; i < voters.length; i++)
-                        votersOptions.push({ value: voters[i].address, label: voters[i].name+" "+voters[i].surename});
-                    self.setState({voters: voters, votersOptions : votersOptions});
-                }
-            });
+            loading: false
         }
     }
 
 
     addPostulant(){
         var self = this;
-        self.setState({loading: true});
-        var payloadData = Actions.Ethereum.buildFunctionData([
-            self.state.postulantAddress,
-            self.state.partyName
-        ], 'addPostulant', Store.contract.ABI)
-        var addPOstulantTx = Actions.Ethereum.buildTX({
-            to: Store.contract.address,
-            from : self.state.adminAddress,
-            value: 0,
-            data: payloadData,
-            nonce: Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.adminAddress ) ))
-        });
-        Actions.Account.sign({
-            password: self.state.adminPassword,
-            data: self.state.adminAccounutData
-        }, addPOstulantTx, function(err, txSigned){
-            Actions.Ethereum.sendTXs([txSigned], function(err){
-                if (err){
-                    var modalBody =
-                        <div class="row modalBody">
-                            <div class="col-xs-12 text-center margin-bottom">
-                                {err}
-                            </div>
-                        </div>;
-                    self.setState({loading: false});
-                    self._modal.setState({open: true, title: 'Error', body: modalBody});
-                } else {
-                    var modalBody =
-                        <div class="row modalBody">
-                            <div class="col-xs-12 text-center margin-bottom">
-                                Postulant
-                                <br/><strong>{self.state.postulantAddress}</strong><br></br>
-                            </div>
-                            <div class="col-xs-12 text-center margin-bottom">
-                                Party Name
-                                <br/><strong>{self.state.partyName}</strong><br></br>
-                            </div>
-                        </div>;
-                    self.setState({loading: false});
-                    self._modal.setState({open: true, title: 'Postulant Added', body: modalBody});
-                }
+        if (
+            self._postulantID.isValid() && self._postulantName.isValid() &&
+            self._partyName.isValid() && self._adminAddress.isValid() &&
+            self._adminAccount.isValid() && self._adminPassword.isValid()
+        ){
+            var postulantID = self._postulantID.getValue();
+            var postulantName = self._postulantName.getValue();
+            var partyName = self._partyName.getValue();
+            var adminAddress = self._adminAddress.getValue();
+            var adminPassword = self._adminPassword.getValue();
+            var adminAccount = self._adminAccount.getValue();
+            self.setState({loading: true});
+            var payloadData = Actions.Ethereum.buildFunctionData([
+                postulantID,
+                postulantName,
+                partyName
+            ], 'addPostulant', Store.contract.ABI)
+            var addPOstulantTx = Actions.Ethereum.buildTX({
+                to: Store.contract.address,
+                from : adminAddress,
+                data: payloadData
             });
-        });
+            Actions.Account.sign({
+                password: adminPassword,
+                data: adminAccount
+            }, addPOstulantTx, function(err, txSigned){
+                Actions.Ethereum.sendTXs([txSigned], function(err){
+                    if (err){
+                        var modalBody =
+                            <div class="row modalBody">
+                                <div class="col-xs-12 text-center margin-bottom">
+                                    {err}
+                                </div>
+                            </div>;
+                        self.setState({loading: false});
+                        self._modal.setState({open: true, title: 'Error', body: modalBody});
+                    } else {
+                        var modalBody =
+                            <div class="row modalBody">
+                                <div class="col-xs-12 text-center margin-bottom">
+                                    <strong>Postulant #{postulantID}</strong>
+                                    <br/>Name
+                                    <br/>{postulantName}<br/>
+                                </div>
+                                <div class="col-xs-12 text-center margin-bottom">
+                                    Party Name
+                                    <br/><strong>{partyName}</strong><br/>
+                                </div>
+                            </div>;
+                        self.setState({loading: false});
+                        self._modal.setState({open: true, title: 'Postulant Added', body: modalBody});
+                    }
+                });
+            });
+        }
     }
 
     render() {
@@ -104,157 +91,48 @@ export default class AddPostulant extends React.Component {
                             <h1>Add Postulant</h1>
                         </div>
                         <form class="col-xs-8 col-xs-offset-2 col-md-6 col-md-offset-3">
-                            <div class="form-group">
-                                <label for="addressInput">Postulant Address</label>
-                                <QRReader
-                                    showQR={self.state.showQRPostulant}
-                                    onError={(e) => console.error(e)}
-                                    onScan={(data) => {
-                                        self.setState({postulantAddress: data, showQRPostulant: false});
-                                    }}
-                                ></QRReader>
-                                <Select
-                                    name="selectVoterAddress"
-                                    value={self.state.postulantAddress}
-                                    options={self.state.votersOptions}
-                                    onChange={(val) => self.setState({postulantAddress: (val) ? val.value : ''})}
-                                />
-                                <div class="input-group">
-                                    <input
-                                        type="text"
-                                        class="form-control"
-                                        id="addressInput"
-                                        value={self.state.postulantAddress}
-                                        onChange={(event) => self.setState({postulantAddress: event.target.value})}
-                                        placeholder="Postulant Address"
-                                    />
-                                    {self.state.showQRPostulant ?
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({showQRPostulant: false})}
-                                        >
-                                            Close <span class="fa fa-camera"></span>
-                                        </span>
-                                    :
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({showQRPostulant: true})}
-                                        >
-                                            Open <span class="fa fa-camera"></span>
-                                        </span>
-                                    }
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="nameInput">Party Name</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    id="nameInput"
-                                    value={self.state.partyName}
-                                    onChange={(event) => self.setState({partyName: event.target.value})}
-                                    placeholder="Party Name"
-                                />
-                            </div>
+                            <Input
+                                ref={(c) => this._postulantID = c}
+                                type='text'
+                                regex="^[0-9]{6,}$"
+                                title='Postulant ID'
+                                placeholder='# Postulant ID (Six Numbers or more)'
+                            />
+                            <Input
+                                ref={(c) => this._postulantName = c}
+                                type='text'
+                                regex="^[a-zA-ZàèìòùÀÈÌÒÙáéíóúýÁÉÍÓÚÝâêîôûÂÊÎÔÛãñõÃÑÕäëïöüÿÄËÏÖÜŸçÇßØøÅåÆæœñÑ ]{2,30}$"
+                                title='Postulant Name'
+                                placeholder='Postulant Name'
+                            />
+                            <Input
+                                ref={(c) => this._partyName = c}
+                                type='text'
+                                regex="^[a-zA-ZàèìòùÀÈÌÒÙáéíóúýÁÉÍÓÚÝâêîôûÂÊÎÔÛãñõÃÑÕäëïöüÿÄËÏÖÜŸçÇßØøÅåÆæœñÑ ]{2,30}$"
+                                title='Party Name'
+                                placeholder='Party Name'
+                            />
                             <h3>Admin Info</h3>
-                            <div class="form-group">
-                                <label for="addressInput">Address</label>
-                                <QRReader
-                                    showQR={self.state.showQRAddress}
-                                    onError={(e) => console.error(e)}
-                                    onScan={(data) => {
-                                        self.setState({adminAddress: data, showQRAddress: false});
-                                    }}
-                                ></QRReader>
-                                <div class="input-group">
-                                    <input
-                                        type="text"
-                                        class="form-control"
-                                        id="addressInput"
-                                        value={self.state.adminAddress}
-                                        onChange={(event) => self.setState({adminAddress: event.target.value})}
-                                        placeholder="Admin Address"
-                                    />
-                                    {self.state.showQRAddress ?
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({showQRAddress: false})}
-                                        >
-                                            Close <span class="fa fa-camera"></span>
-                                        </span>
-                                    :
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({showQRAddress: true})}
-                                        >
-                                            Open <span class="fa fa-camera"></span>
-                                        </span>
-                                    }
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="adminAccountInput">Account</label>
-                                <QRReader
-                                    showQR={self.state.showQRAccount}
-                                    onError={(e) => console.error(e)}
-                                    onScan={(data) => {
-                                        self.setState({adminAccounutData: data, showQRAccount: false});
-                                    }}
-                                ></QRReader>
-                                <div class="input-group">
-                                    <input
-                                        type="text"
-                                        class="form-control"
-                                        id="adminAccountInput"
-                                        value={self.state.adminAccounutData}
-                                        onChange={(event) => self.setState({adminAccounutData: event.target.value})}
-                                        placeholder="Admin Account"
-                                    />
-                                    {self.state.showQRAccount ?
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({showQRAccount: false})}
-                                        >
-                                            Close <span class="fa fa-camera"></span>
-                                        </span>
-                                    :
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({showQRAccount: true})}
-                                        >
-                                            Open <span class="fa fa-camera"></span>
-                                        </span>
-                                    }
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="passwordInput">Password</label>
-                                <div class="input-group">
-                                    <input
-                                        type={self.state.hidePassword ? 'password': 'text'}
-                                        class="form-control"
-                                        id="passwordInput"
-                                        value={self.state.adminPassword}
-                                        onChange={(event) => self.setState({adminPassword: event.target.value})}
-                                        placeholder="Admin Password"
-                                    />
-                                    {self.state.hidePassword ?
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({hidePassword: false})}
-                                        >
-                                            <span class="fa fa-eye"></span>
-                                        </span>
-                                    :
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({hidePassword: true})}
-                                        >
-                                            <span class="fa fa-eye-slash"></span>
-                                        </span>
-                                    }
-                                </div>
-                            </div>
+                            <Input
+                                ref={(c) => this._adminAddress = c}
+                                type='address'
+                                title='Admin Address'
+                                placeholder='Address'
+                            />
+                            <Input
+                                ref={(c) => this._adminAccount = c}
+                                type='account'
+                                regex="^[a-zA-Z0-9+/\r\n]+={0,2}$"
+                                title='Admin Account'
+                                placeholder='Account'
+                            />
+                            <Input
+                                ref={(c) => this._adminPassword = c}
+                                regex="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[$@$!%*?&#_~])[A-Za-z0-9$@$!%*?&#_~]{8,}"
+                                type='password'
+                                title='Admin Password'
+                                placeholder='Password'
+                            />
                             <div class="row margin-bottom margin-top text-center">
                                 <button  class="btn btn-md btn-default" onClick={() => this.addPostulant()}>Add Postulant</button>
                             </div>

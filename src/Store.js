@@ -7,16 +7,12 @@ var contracts = JSON.parse(require('./contracts.json'));
 class AppStore extends EventEmitter {
 	constructor() {
 		super();
-		if (window.localStorage.getItem('accounts'))
-			this.accounts = JSON.parse(window.localStorage.accounts);
-		else
-			this.accounts = [];
 		if (window.localStorage.getItem('contract'))
 			this.contract = JSON.parse(window.localStorage.contract);
 		else
 			this.contract = {
 				address: appConfig.contractAddress,
-				ABI: contracts.BKCVote.info.abiDefinition
+				ABI: JSON.parse(contracts.BKCVote.interface)
 			}
 		if (window.localStorage.getItem('web3Provider'))
 			this.web3Provider = window.localStorage.web3Provider;
@@ -24,13 +20,6 @@ class AppStore extends EventEmitter {
 			this.web3Provider = appConfig.web3Provider;
 		this.web3 = null;
 		console.log(window.localStorage)
-	}
-
-	setAccounts(accounts) {
-		this.accounts = [];
-		for (var i = 0; i < accounts.length; i++)
-			this.accounts.push(accounts[i]);
-		window.localStorage.setItem('accounts', JSON.stringify(this.accounts));
 	}
 
 	setContract(address, ABI) {
@@ -56,11 +45,6 @@ class AppStore extends EventEmitter {
 		    case "SET_CONTRACT": {
 		        this.setContract(action.address, action.ABI)
 		        this.emit("contractChanged");
-		        break;
-		    }
-			case "ADD_ACCOUNTS": {
-		        this.addAccounts(action.accounts)
-		        this.emit("accountsChanged");
 		        break;
 		    }
 		}

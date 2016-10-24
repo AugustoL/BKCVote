@@ -24,7 +24,7 @@ export default class Verifier extends React.Component {
                     <h1 class="title">Verifier Options</h1>
                 </div>
                 <div class="col-xs-12 text-center">
-                    <Link to="verifyVote" class="cursor-pointer"><h2 class="title">Verify Vote</h2></Link>
+                    <Link to="verifyVote" class="cursor-pointer"><h2 class="margin-top margin-bottom">Verify Vote</h2></Link>
                 </div>
             </div>
         )

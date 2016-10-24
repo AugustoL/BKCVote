@@ -7,7 +7,7 @@ import Store from "../Store";
 import * as Actions from "../actions";
 import Loader from "../components/Loader";
 import Modal from '../components/Modal';
-import QRReader from "../components/QRReader";
+import Input from "../components/Input";
 
 export default class AddVoter extends React.Component {
 
@@ -15,93 +15,68 @@ export default class AddVoter extends React.Component {
         super();
         this.state = {
             loading: false,
-            voterAddress: "",
-            voterName: "",
-            voterSurename: "",
-            voterBirthDate: "",
-            voterID: "",
-            voterPhisicalAddress: "",
-            adminAccounutData: "",
-            adminPassword: "",
-            showQRAddress: false,
-            showQRAccount: false,
-            hidePassword: true
         }
     }
 
     addVoter(){
         var self = this;
-        self.setState({loading: true});
-        var txsToSend = []
-        async.series([
-            function(callback){
-                var payloadData = Actions.Ethereum.buildFunctionData([
-                    self.state.voterAddress,
-                    self.state.voterName,
-                    self.state.voterSurename,
-                    self.state.voterBirthDate,
-                    self.state.voterID,
-                    self.state.voterPhisicalAddress,
-                ], 'addVoter', Store.contract.ABI)
-                var addVoterTX = Actions.Ethereum.buildTX({
-                    to: Store.contract.address,
-                    from : self.state.adminAddress,
-                    data: payloadData,
-                    nonce: Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.adminAddress ) ))
-                });
-                Actions.Account.sign({
-                    password: self.state.adminPassword,
-                    data: self.state.adminAccounutData
-                }, addVoterTX, function(err, txSigned){
-                    txsToSend.push(txSigned);
-                    callback(err);
-                });
-            },
-            function(callback){
-                var sendToVoter = Actions.Ethereum.buildTX({
-                    to: self.state.voterAddress,
-                    from : self.state.adminAddress,
-                    value: Store.web3.toWei('0.005', 'ether'),
-                    nonce: Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.adminAddress ) )+1)
-                });
-                Actions.Account.sign({
-                    password: self.state.adminPassword,
-                    data: self.state.adminAccounutData
-                }, sendToVoter, function(err, txSigned){
-                    txsToSend.push(txSigned);
-                    callback(err);
-                });
-            }
-        ], function(error){
-            if (error)
-                console.error(error);
-            Actions.Ethereum.sendTXs(txsToSend, function(err){
-                if (err){
-                    var modalBody =
-                        <div class="row modalBody">
-                            <div class="col-xs-12 text-center margin-bottom">
-                                {err}
-                            </div>
-                        </div>;
-                    self.setState({loading: false});
-                    self._modal.setState({open: true, title: 'Error', body: modalBody});
-                } else {
-                    var modalBody =
-                        <div class="row modalBody">
-                            <div class="col-xs-12 text-center margin-bottom">
-                                Address
-                                <br/><strong>{self.state.voterAddress}</strong><br></br>
-                            </div>
-                            <div class="col-xs-12 text-center margin-bottom">
-                                Voter Name
-                                <br/><strong>{self.state.voterName} {self.state.voterSurename}</strong><br></br>
-                            </div>
-                        </div>;
-                    self.setState({loading: false});
-                    self._modal.setState({open: true, title: 'Voter Added', body: modalBody});
-                }
+        if (
+            self._voterAddressInput.isValid() && self._voterNameInput.isValid() &&
+            self._voterSurenameInput.isValid() && self._voterBirthDateInput.isValid() &&
+            self._voterIDInput.isValid() && self._voterPhisicalAddressInput.isValid() &&
+            self._adminAddress.isValid() && self._adminAccount.isValid()
+            && self._adminPassword.isValid()
+        ){
+            var voterAddress = self._voterAddressInput.getValue();
+            var voterName = self._voterNameInput.getValue()+' '+self._voterSurenameInput.getValue();
+            self.setState({loading: true, loadingMessage: 'Adding Voter'});
+            var payloadData = Actions.Ethereum.buildFunctionData([
+                self._voterAddressInput.getValue(),
+                self._voterNameInput.getValue(),
+                self._voterSurenameInput.getValue(),
+                self._voterBirthDateInput.getValue(),
+                self._voterIDInput.getValue(),
+                self._voterPhisicalAddressInput.getValue(),
+            ], 'addVoter', Store.contract.ABI)
+            var addVoterTX = Actions.Ethereum.buildTX({
+                to: Store.contract.address,
+                from : self._adminAddress.getValue(),
+                data: payloadData
             });
-        })
+            Actions.Account.sign({
+                password: self._adminPassword.getValue(),
+                data: self._adminAccount.getValue()
+            }, addVoterTX, function(err, txSigned){
+                if (err)
+                    console.error(err);
+                Actions.Ethereum.sendTXs([txSigned], function(err){
+                    if (err){
+                        var modalBody =
+                            <div class="row modalBody">
+                                <div class="col-xs-12 text-center margin-bottom">
+                                    {err}
+                                </div>
+                            </div>;
+                        self.setState({loading: false});
+                        self._modal.setState({open: true, title: 'Error', body: modalBody});
+                    } else {
+                        var modalBody =
+                            <div class="row modalBody">
+                                <div class="col-xs-12 text-center margin-bottom">
+                                    Address
+                                    <br/><strong>{voterAddress}</strong><br></br>
+                                </div>
+                                <div class="col-xs-12 text-center margin-bottom">
+                                    Voter Name
+                                    <br/><strong>{voterName}</strong><br></br>
+                                </div>
+                            </div>;
+                        self.setState({loading: false});
+                        self._modal.setState({open: true, title: 'Voter Added', body: modalBody});
+                    }
+                });
+            });
+        };
     }
 
     render() {
@@ -109,202 +84,75 @@ export default class AddVoter extends React.Component {
         return(
             <div>
                 { self.state.loading ?
-                    <Loader />
+                    <Loader message={self.state.loadingMessage || ''}/>
                 :
                     <div>
                         <div class="col-xs-12 text-center">
                             <h1>Add Voter</h1>
                         </div>
                         <form class="col-xs-8 col-xs-offset-2 col-md-6 col-md-offset-3">
-                            <div class="form-group">
-                                <label for="addressInput">Voter Address</label>
-                                <QRReader
-                                    showQR={self.state.showQRVoter}
-                                    onError={(e) => console.error(e)}
-                                    onScan={(data) => {
-                                        self.setState({voterAddress: data, showQRVoter: false});
-                                    }}
-                                ></QRReader>
-                                <div class="input-group">
-                                    <input
-                                        type="text"
-                                        class="form-control"
-                                        id="addressInput"
-                                        value={self.state.voterAddress}
-                                        onChange={(event) => self.setState({voterAddress: event.target.value})}
-                                        placeholder="Voter Address"
-                                    />
-                                    {self.state.showQRVoter ?
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({showQRVoter: false})}
-                                        >
-                                            Close <span class="fa fa-camera"></span>
-                                        </span>
-                                    :
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({showQRVoter: true})}
-                                        >
-                                            Open <span class="fa fa-camera"></span>
-                                        </span>
-                                    }
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="nameInput">Name</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    id="nameInput"
-                                    value={self.state.voterName}
-                                    onChange={(event) => self.setState({voterName: event.target.value})}
-                                    placeholder="Name"
-                                />
-                            </div>
-                            <div class="form-group">
-                                <label for="nameInput">Surename</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    id="nameInput"
-                                    value={self.state.voterSurename}
-                                    onChange={(event) => self.setState({voterSurename: event.target.value})}
-                                    placeholder="Name"
-                                />
-                            </div>
-                            <div class="form-group">
-                                <label for="nameInput">Birth Date</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    id="nameInput"
-                                    value={self.state.voterBirthDate}
-                                    onChange={(event) => self.setState({voterBirthDate: event.target.value})}
-                                    placeholder="DD/MM/YYY"
-                                />
-                            </div>
-                            <div class="form-group">
-                                <label for="idInput">Voter ID</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    id="idInput"
-                                    value={self.state.voterID}
-                                    onChange={(event) => self.setState({voterID: event.target.value})}
-                                    placeholder="Voter # Personal ID"
-                                />
-                            </div>
-                            <div class="form-group">
-                                <label for="phisicalAddressInput">Phisical Address</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    id="phisicalAddressInput"
-                                    value={self.state.voterPhisicalAddress}
-                                    onChange={(event) => self.setState({voterPhisicalAddress: event.target.value})}
-                                    placeholder="Phisical Address"
-                                />
-                            </div>
+                            <Input
+                                ref={(c) => this._voterAddressInput = c}
+                                type='address'
+                                title='Voter Address'
+                                placeholder='Voter Address'
+                            />
+                            <Input
+                                ref={(c) => this._voterNameInput = c}
+                                type='text'
+                                regex="^[a-zA-ZàèìòùÀÈÌÒÙáéíóúýÁÉÍÓÚÝâêîôûÂÊÎÔÛãñõÃÑÕäëïöüÿÄËÏÖÜŸçÇßØøÅåÆæœñÑ ]{2,30}$"
+                                title='Voter Name'
+                                placeholder='Name'
+                            />
+                            <Input
+                                ref={(c) => this._voterSurenameInput = c}
+                                type='text'
+                                regex="^[a-zA-ZàèìòùÀÈÌÒÙáéíóúýÁÉÍÓÚÝâêîôûÂÊÎÔÛãñõÃÑÕäëïöüÿÄËÏÖÜŸçÇßØøÅåÆæœñÑ ]{2,30}$"
+                                title='Voter Surename'
+                                placeholder='Surename'
+                            />
+                            <Input
+                                ref={(c) => this._voterBirthDateInput = c}
+                                type='text'
+                                regex="^(0?[1-9]|[12][0-9]|3[01])[\/\-](0?[1-9]|1[012])[\/\-]\d{4}$"
+                                title='Voter Birth Date'
+                                placeholder='DD/MM/YYYY'
+                            />
+                            <Input
+                                ref={(c) => this._voterIDInput = c}
+                                type='text'
+                                regex="^[0-9]{6,}$"
+                                title='Voter ID'
+                                placeholder='Voter # Personal ID (Six Numbers or more)'
+                            />
+                            <Input
+                                ref={(c) => this._voterPhisicalAddressInput = c}
+                                type='text'
+                                regex="^[a-zA-Z1-9àèìòùÀÈÌÒÙáéíóúýÁÉÍÓÚÝâêîôûÂÊÎÔÛãñõÃÑÕäëïöüÿÄËÏÖÜŸçÇßØøÅåÆæœñÑ,;. ]{5,50}$"
+                                title='Voter Phisical Address'
+                                placeholder='Phisical Address'
+                            />
                             <h3>Admin Info</h3>
-                            <div class="form-group">
-                                <label for="addressInput">Address</label>
-                                <QRReader
-                                    showQR={self.state.showQRAddress}
-                                    onError={(e) => console.error(e)}
-                                    onScan={(data) => {
-                                        self.setState({adminAddress: data, showQRAddress: false});
-                                    }}
-                                ></QRReader>
-                                <div class="input-group">
-                                    <input
-                                        type="text"
-                                        class="form-control"
-                                        id="addressInput"
-                                        value={self.state.adminAddress}
-                                        onChange={(event) => self.setState({adminAddress: event.target.value})}
-                                        placeholder="Admin Address"
-                                    />
-                                    {self.state.showQRAddress ?
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({showQRAddress: false})}
-                                        >
-                                            Close <span class="fa fa-camera"></span>
-                                        </span>
-                                    :
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({showQRAddress: true})}
-                                        >
-                                            Open <span class="fa fa-camera"></span>
-                                        </span>
-                                    }
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="adminAccountInput">Account</label>
-                                <QRReader
-                                    showQR={self.state.showQRAccount}
-                                    onError={(e) => console.error(e)}
-                                    onScan={(data) => {
-                                        self.setState({adminAccounutData: data, showQRAccount: false});
-                                    }}
-                                ></QRReader>
-                                <div class="input-group">
-                                    <input
-                                        type="text"
-                                        class="form-control"
-                                        id="adminAccountInput"
-                                        value={self.state.adminAccounutData}
-                                        onChange={(event) => self.setState({adminAccounutData: event.target.value})}
-                                        placeholder="Admin Account"
-                                    />
-                                    {self.state.showQRAccount ?
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({showQRAccount: false})}
-                                        >
-                                            Close <span class="fa fa-camera"></span>
-                                        </span>
-                                    :
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({showQRAccount: true})}
-                                        >
-                                            Open <span class="fa fa-camera"></span>
-                                        </span>
-                                    }
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="passwordInput">Password</label>
-                                <div class="input-group">
-                                    <input
-                                        type={self.state.hidePassword ? 'password': 'text'}
-                                        class="form-control"
-                                        id="passwordInput"
-                                        value={self.state.adminPassword}
-                                        onChange={(event) => self.setState({adminPassword: event.target.value})}
-                                        placeholder="Admin Password"
-                                    />
-                                    {self.state.hidePassword ?
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({hidePassword: false})}
-                                        >
-                                            <span class="fa fa-eye"></span>
-                                        </span>
-                                    :
-                                        <span
-                                            class="input-group-addon cursor-pointer"
-                                            onClick={() => self.setState({hidePassword: true})}
-                                        >
-                                            <span class="fa fa-eye-slash"></span>
-                                        </span>
-                                    }
-                                </div>
-                            </div>
+                            <Input
+                                ref={(c) => this._adminAddress = c}
+                                type='address'
+                                title='Admin Address'
+                                placeholder='Address'
+                            />
+                            <Input
+                                ref={(c) => this._adminAccount = c}
+                                type='account'
+                                regex="^[a-zA-Z0-9+/\r\n]+={0,2}$"
+                                title='Admin Account'
+                                placeholder='Account'
+                            />
+                            <Input
+                                ref={(c) => this._adminPassword = c}
+                                regex="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[$@$!%*?&#_~])[A-Za-z0-9$@$!%*?&#_~]{8,}"
+                                type='password'
+                                title='Admin Password'
+                                placeholder='Password'
+                            />
                             <div class="row margin-bottom margin-top text-center">
                                 <button  class="btn btn-md btn-default" onClick={() => this.addVoter()}>Add Voter</button>
                             </div>

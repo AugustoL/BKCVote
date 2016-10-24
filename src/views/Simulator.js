@@ -10,7 +10,7 @@ var Web3 = require('web3');
 import * as Actions from "../actions";
 import Loader from "../components/Loader";
 
-var appAccounts = JSON.parse(require('../../blockchain/accounts.json'));
+var accounts = JSON.parse(require('../../blockchain/accounts.json'));
 
 var contracts = JSON.parse(require('../contracts.json'));
 
@@ -20,21 +20,22 @@ export default class Simulator extends React.Component {
         super();
         this.state = {
             loading: false,
-            blockStart: 10000,
-            blockEnd: 15000,
             electionName: 'Test Election',
             amountAccounts: 10,
             address: "",
             privateKey: "",
-            accounts: Store.accounts || []
+            accounts: accounts.users || []
         }
     }
 
     componentWillMount() {
         var self = this;
         self.setState({
-            address: appAccounts.admin.address,
-            privateKey: appAccounts.admin.privateKey
+            address: accounts.admin.address,
+            privateKey: accounts.admin.privateKey
+        });
+        Actions.Ethereum.getContractInfo(function(err, info){
+            console.log('Contract info:',info);
         });
     }
 
@@ -44,20 +45,18 @@ export default class Simulator extends React.Component {
         Actions.Ethereum.deployContract(
             self.state.privateKey,
             self.state.address,
-            contracts.BKCVote.code,
-            contracts.BKCVote.info.abiDefinition,
+            '0x'+contracts.BKCVote.bytecode,
+            JSON.parse(contracts.BKCVote.interface),
             [
-                self.state.electionName,
-                self.state.blockStart,
-                self.state.blockEnd
+                self.state.electionName
             ],
-            0,
+            Store.web3.toWei('0.01', 'ether')*parseInt(self.state.amountAccounts),
             function(err, receipt){
                 if (err){
                     console.error(err);
                     self.setState({loading: false});
                 } else {
-                    Actions.Store.setContract(receipt.contractAddress, contracts.BKCVote.info.abiDefinition);
+                    Actions.Store.setContract(receipt.contractAddress, JSON.parse(contracts.BKCVote.interface));
                     if (callback){
                         callback(err);
                     } else {
@@ -68,46 +67,15 @@ export default class Simulator extends React.Component {
         );
     }
 
-    createAccounts(callback){
-        var self = this;
-        self.setState({loading: true, loadingMessage: 'Creating Accounts'});
-        console.log('\n Creating '+self.state.amountAccounts+' accounts.. \n');
-        var passwords = [];
-        for (var i = 0; i < self.state.amountAccounts; i++)
-            passwords.push('StrongPassword'+i);
-        var newAccounts = [];
-        async.eachOfLimit(passwords, 1, function(password, key, accountCallback){
-            Actions.Account.createAccount({password: password}, function(err, info){
-                newAccounts.push({
-                    address: '0x'+info.address,
-                    password: password,
-                    data: info.data,
-                });
-                console.log("\n Account 0x"+info.address+" created with password "+password);
-                accountCallback(err);
-            });
-        },
-        function(err){
-            if (err)
-                console.error(err);
-            Store.setAccounts(newAccounts);
-            if (callback){
-                callback(err);
-                self.setState({accounts : newAccounts});
-            } else {
-                self.setState({loading: false, accounts : newAccounts});
-            }
-        })
-    }
-
     addVoters(callback){
         var self = this;
         self.setState({loading: true, loadingMessage: 'Adding Voters'});
-        console.log('\n Populating contract with '+self.state.amountAccounts+' accounts.. \n');
+
+        console.log('\n Populating contract with '+self.state.accounts.slice(0,self.state.amountAccounts).length+' accounts.. \n');
         var txsToSend = [];
         var nonce = Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.address ) ));
-        async.eachOfLimit(self.state.accounts, 1, function(account, key, accountCallback){
-            console.log("\n Adding voter with account 0x"+account.address);
+        async.eachOfLimit(self.state.accounts.slice(0,self.state.amountAccounts), 1, function(account, key, accountCallback){
+            console.log("\n Adding voter with account "+account.address);
             Store.web3.eth.contract(Store.contract.ABI).at(Store.contract.address).votersIndex.call(account.address, function(err, pos){
                 if (pos == 0) {
                     var payloadData = Actions.Ethereum.buildFunctionData([
@@ -127,16 +95,6 @@ export default class Simulator extends React.Component {
                     });
                     txsToSend.push(Actions.Ethereum.signTX(addVoterTX, self.state.privateKey));
                     nonce ++;
-                }
-                if (Store.web3.eth.getBalance(account.address) < Store.web3.toWei('0.005', 'ether')){
-                    var sendToVoter = Actions.Ethereum.buildTX({
-                        to: account.address,
-                        from : self.state.address,
-                        value: Store.web3.toWei('0.005', 'ether'),
-                        nonce: nonce
-                    });
-                    nonce ++;
-                    txsToSend.push(Actions.Ethereum.signTX(sendToVoter, self.state.privateKey));
                 }
                 accountCallback(err);
             })
@@ -161,42 +119,42 @@ export default class Simulator extends React.Component {
     addPostulants(callback){
         var self = this;
         self.setState({loading: true, loadingMessage: 'Adding Postulants'});
-        console.log('\n Adding first two accounts as postulants.. \n');
+        console.log('\n Adding postulants.. \n');
         var nonce = Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.address ) ));
         async.series([
             function(postulantOneCallback) {
-                Actions.Ethereum.getVoterInfo(self.state.accounts[0].address, function(err, info){
-                    console.log("\n Adding postulant with party name 'Party Number 1' with address "+self.state.accounts[0].address);
-                    var payloadData = Actions.Ethereum.buildFunctionData([
-                        self.state.accounts[0].address,
-                        'Party Number 1'
-                    ], 'addPostulant', Store.contract.ABI)
-                    var winnerPostulantTx = Actions.Ethereum.buildTX({
-                        to: Store.contract.address,
-                        from : self.state.address,
-                        value: 0,
-                        data: payloadData,
-                        nonce: Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.address ) ))
-                    });
-                    postulantOneCallback(err, Actions.Ethereum.signTX(winnerPostulantTx, self.state.privateKey));
+                const postulantOneName = chance.first()+' '+chance.last();
+                console.log("\n Adding postulant "+postulantOneName+" with party name 'Party Number 1'");
+                var payloadData = Actions.Ethereum.buildFunctionData([
+                    chance.integer({min: 10000, max: 100000}).toString(),
+                    postulantOneName,
+                    'Party Number 1'
+                ], 'addPostulant', Store.contract.ABI)
+                var winnerPostulantTx = Actions.Ethereum.buildTX({
+                    to: Store.contract.address,
+                    from : self.state.address,
+                    value: 0,
+                    data: payloadData,
+                    nonce: Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.address ) ))
                 });
+                postulantOneCallback(null, Actions.Ethereum.signTX(winnerPostulantTx, self.state.privateKey));
             },
             function(postulantTwoCallback) {
-                Actions.Ethereum.getVoterInfo(self.state.accounts[1].address, function(err, info){
-                    console.log("\n Adding postulant with party name 'Party Number 2' with address "+self.state.accounts[1].address);
-                    var payloadData = Actions.Ethereum.buildFunctionData([
-                        self.state.accounts[1].address,
-                        'Party Number 2'
-                    ], 'addPostulant', Store.contract.ABI)
-                    var loserPostulantTx = Actions.Ethereum.buildTX({
-                        to: Store.contract.address,
-                        from : self.state.address,
-                        value: 0,
-                        data: payloadData,
-                        nonce: Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.address ) )+1)
-                    });
-                    postulantTwoCallback(err, Actions.Ethereum.signTX(loserPostulantTx, self.state.privateKey));
+                const postulantTwoName = chance.first()+' '+chance.last();
+                console.log("\n Adding postulant "+postulantTwoName+" with party name 'Party Number 2'");
+                var payloadData = Actions.Ethereum.buildFunctionData([
+                    chance.integer({min: 10000, max: 100000}).toString(),
+                    postulantTwoName,
+                    'Party Number 2'
+                ], 'addPostulant', Store.contract.ABI)
+                var loserPostulantTx = Actions.Ethereum.buildTX({
+                    to: Store.contract.address,
+                    from : self.state.address,
+                    value: 0,
+                    data: payloadData,
+                    nonce: Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.address ) )+1)
                 });
+                postulantTwoCallback(null, Actions.Ethereum.signTX(loserPostulantTx, self.state.privateKey));
             }
         ],
         function(error, results) {
@@ -216,15 +174,39 @@ export default class Simulator extends React.Component {
         });
     }
 
+    setStage(newStage, callback){
+        var self = this;
+        self.setState({loading: true, loadingMessage: 'Changing Election Stage'});
+        console.log('\n Changing election stage to '+newStage+' .. \n');
+        var nonce = Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.address ) ));
+        var payloadData = Actions.Ethereum.buildFunctionData([
+            newStage
+        ], 'setStage', Store.contract.ABI)
+        var setStageTX = Actions.Ethereum.buildTX({
+            to: Store.contract.address,
+            from : self.state.address,
+            value: 0,
+            data: payloadData,
+            nonce: Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.address ) ))
+        });
+        Actions.Ethereum.sendTXs([ Actions.Ethereum.signTX(setStageTX, self.state.privateKey) ], function(err){
+            if (err)
+                console.error(err);
+            if (callback)
+                callback(err);
+            else
+                self.setState({loading: false});
+        });
+    }
+
     setVerifiers(callback){
         var self = this;
         self.setState({loading: true, loadingMessage: 'Setting Verifiers'});
-        console.log('\n Populating contract with '+self.state.amountAccounts+' accounts.. \n');
+        console.log('\n Setting verfiers.. \n');
         var txsToSend = [];
         var nonce = Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.address ) ));
-        async.eachOfLimit(self.state.accounts, 1, function(account, key, verifierCallback){
+        async.eachOfLimit(self.state.accounts.slice(0,self.state.amountAccounts), 1, function(account, key, verifierCallback){
             Actions.Ethereum.getVoterInfo(account.address, function(err, info){
-                console.log(info)
                 if (info.verifier == '0x0000000000000000000000000000000000000000'){
                     console.log("\n Setting verifier "+account.address+" on address "+self.state.accounts[0].address);
                     var payloadData = Actions.Ethereum.buildFunctionData([
@@ -238,16 +220,8 @@ export default class Simulator extends React.Component {
                         data: payloadData,
                         nonce: nonce
                     });
+                    nonce ++;
                     txsToSend.push(Actions.Ethereum.signTX(setVerifierTx, self.state.privateKey));
-                    nonce ++;
-                    var sendToVerifierTx = Actions.Ethereum.buildTX({
-                        to: self.state.accounts[0].address,
-                        from : self.state.address,
-                        value: Store.web3.toWei('0.005', 'ether'),
-                        nonce: nonce
-                    });
-                    nonce ++;
-                    txsToSend.push(Actions.Ethereum.signTX(sendToVerifierTx, self.state.privateKey));
                     verifierCallback(null);
                 } else {
                     console.log('\n Account '+account.address+' verifier already set.');
@@ -277,63 +251,64 @@ export default class Simulator extends React.Component {
         self.setState({loading: true, loadingMessage: 'Simulating Election'});
         console.log('\n Simulating election.. \n');
         var txsToSend = [];
-        async.eachOfLimit(self.state.accounts, 1, function(account, key, voteCallback){
-            Actions.Ethereum.getVoterInfo(account.address, function(err, info){
-                if (!info.voted){
-                    console.log("");
-                    const random = chance.integer({min: 0, max: 10});
-                    var selected = self.state.accounts[ 0 ].address;
-                    if (random >= 8)
-                        selected = self.state.accounts[ 1 ].address;
-                    var payloadData = Actions.Ethereum.buildFunctionData([
-                        selected
-                    ], 'vote', Store.contract.ABI)
-                    var voteTx = Actions.Ethereum.buildTX({
-                        to: Store.contract.address,
-                        from : account.address,
-                        value: 0,
-                        data: payloadData
-                    });
-                    Actions.Account.sign({
-                        password: account.password,
-                        data: account.data
-                    },
-                    voteTx,
-                    function(err, signedTX){
-                        txsToSend.push(signedTX);
-                        voteCallback(err);
-                    });
+        Actions.Ethereum.getPostulants(function(err, postulants){
+            async.eachOfLimit(self.state.accounts.slice(0,self.state.amountAccounts), 1, function(account, key, voteCallback){
+                Actions.Ethereum.getVoterInfo(account.address, function(err, info){
+                    if (!info.voted){
+                        console.log("");
+                        const random = chance.integer({min: 0, max: 10});
+                        var selected = postulants[0].id;
+                        if (random >= 8)
+                            selected = postulants[1].id;
+                        var payloadData = Actions.Ethereum.buildFunctionData([
+                            selected
+                        ], 'vote', Store.contract.ABI)
+                        var voteTx = Actions.Ethereum.buildTX({
+                            to: Store.contract.address,
+                            from : account.address,
+                            value: 0,
+                            data: payloadData
+                        });
+                        Actions.Account.sign({
+                            password: account.password,
+                            data: account.data
+                        },
+                        voteTx,
+                        function(err, signedTX){
+                            txsToSend.push(signedTX);
+                            voteCallback(err);
+                        });
+                    } else {
+                        console.log('\n Account '+account.address+' already voted.');
+                        voteCallback(null);
+                    }
+                });
+            },
+            function(error){
+                if (error && callback){
+                    console.error(error);
+                    callback(error);
                 } else {
-                    console.log('\n Account '+account.address+' already voted.');
-                    voteCallback(null);
+                    Actions.Ethereum.sendTXs(txsToSend, function(err){
+                        if (err)
+                            console.error(err);
+                        if (callback)
+                            callback(err);
+                        else
+                            self.setState({loading: false});
+                    });
                 }
             });
-
-        },
-        function(error){
-            if (error && callback){
-                console.error(error);
-                callback(error);
-            } else {
-                Actions.Ethereum.sendTXs(txsToSend, function(err){
-                    if (err)
-                        console.error(err);
-                    if (callback)
-                        callback(err);
-                    else
-                        self.setState({loading: false});
-                });
-            }
-        })
+        });
     }
 
     verifyVotes(callback){
         var self = this;
         self.setState({loading: true, loadingMessage: 'Verifying Votes'});
         console.log('\n Verifying votes.. \n');
-        var nonce = Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.accounts[0].address ) ));
         var txsToSend = [];
-        async.eachOfLimit(self.state.accounts, 1, function(account, key, verifyCallback){
+        var nonce = Store.web3.toHex(parseInt( Store.web3.eth.getTransactionCount( self.state.accounts[0].address ) ));
+        async.eachOfLimit(self.state.accounts.slice(0,self.state.amountAccounts), 1, function(account, key, verifyCallback){
             Actions.Ethereum.getVoterInfo(account.address, function(err, info){
                 if (info.voted || (info.verifier == '0x0000000000000000000000000000000000000000')){
                     console.log("");
@@ -388,30 +363,33 @@ export default class Simulator extends React.Component {
         var self = this;
         self.setState({loading: true, loadingMessage: 'Getting Votes'});
         console.log('\n Getting votes.. \n');
-        async.eachOfLimit(self.state.accounts, 1, function(account, key, viewVoteCallback){
+        async.eachOfLimit(self.state.accounts.slice(0,self.state.amountAccounts), 1, function(account, key, viewVoteCallback){
             console.log("");
-            var payloadData = Actions.Ethereum.buildFunctionData([], 'seeVote', Store.contract.ABI)
             Actions.Account.call({
                 password: account.password,
-                data: account.data
-            },{
-                to: Store.contract.address,
-                from : account.address,
-                data: payloadData,
+                account: account.data,
+                from: account.address,
+                payload: Actions.Ethereum.buildFunctionData([], 'seeVote', Store.contract.ABI),
+                functionName: 'seeVote'
             },
             function(err, result){
-                if (err)
-                    console.log(err);
-                else {
-                    console.log(account.address, ' voted to: ','0x'+result.substring(26,66));
-                    console.log((parseInt(result.substring(66)) == 1) ? 'Vote Done' : 'Vote Not Done');
+                if (result[0].toNumber() == 0){
+                    console.log('Voter not registered.');
+                    viewVoteCallback(err);
+                } else if (result[0].toNumber() == 1){
+                    console.log('Voter didnt vote yet.');
+                    viewVoteCallback(err);
+                } else {
+                    Actions.Ethereum.getPostulant(result[0].toNumber(), function(err, postulantInfo){
+                        console.log(account.address, 'voted to', postulantInfo.name);
+                        viewVoteCallback(err);
+                    });
                 }
-                viewVoteCallback(err);
             });
         },
         function(err){
             if (err)
-                console.log(err);
+                console.error(err);
             if (callback)
                 callback(err);
             else
@@ -460,13 +438,6 @@ export default class Simulator extends React.Component {
                 Actions.Ethereum.waitForBlock(Store.web3.eth.blockNumber+5, callback);
             },
             function(callback) {
-                self.createAccounts(callback);
-            },
-            function(callback) {
-                console.log('\n Waiting for 5 blocks \n');
-                Actions.Ethereum.waitForBlock(Store.web3.eth.blockNumber+5, callback);
-            },
-            function(callback) {
                 self.addVoters(callback);
             },
             function(callback) {
@@ -484,9 +455,11 @@ export default class Simulator extends React.Component {
                 self.setVerifiers(callback);
             },
             function(callback) {
-                self.setState({loadingMessage: 'Waiting for block '+self.state.blockStart});
-                console.log('\n Waiting for block '+self.state.blockStart+'\n');
-                Actions.Ethereum.waitForBlock(self.state.blockStart, callback);
+                self.setStage(1, callback);
+            },
+            function(callback) {
+                console.log('\n Waiting for 5 blocks \n');
+                Actions.Ethereum.waitForBlock(Store.web3.eth.blockNumber+5, callback);
             },
             function(callback) {
                 self.simulateVotes(callback);
@@ -501,6 +474,9 @@ export default class Simulator extends React.Component {
             function(callback) {
                 console.log('\n Waiting for 5 blocks \n');
                 Actions.Ethereum.waitForBlock(Store.web3.eth.blockNumber+5, callback);
+            },
+            function(callback) {
+                self.setStage(2, callback);
             },
             function(callback) {
                 self.viewVotes(callback);
@@ -548,28 +524,6 @@ export default class Simulator extends React.Component {
                                 />
                             </div>
                             <div class="form-group">
-                                <label for="startBlockInput">Start Block</label>
-                                <input
-                                    type="number"
-                                    class="form-control"
-                                    id="startBlockInput"
-                                    value={self.state.blockStart}
-                                    onChange={(event) => self.setState({blockStart: event.target.value})}
-                                    placeholder="The block where the votation is going to start"
-                                />
-                            </div>
-                            <div class="form-group">
-                                <label for="endBlockInput">Finish Block</label>
-                                <input
-                                    type="number"
-                                    class="form-control"
-                                    id="endBlockInput"
-                                    value={self.state.blockEnd}
-                                    onChange={(event) => self.setState({blockEnd: event.target.value})}
-                                    placeholder="The block where the votation is going to end"
-                                />
-                            </div>
-                            <div class="form-group">
                                 <label for="amountOfAccountsInput">Amount of Accounts</label>
                                 <input
                                     type="number"
@@ -605,42 +559,49 @@ export default class Simulator extends React.Component {
                             </div>
                             <div class="row">
                                 <div class="col-xs-12 text-center">
-                                    <button type="submit" class="btn btn-lg btn-default" onClick={() => this.simulateAll()}>Simulate All</button>
+                                    <button type="submit" class="btn btn-lg btn-default" onClick={() => self.simulateAll()}>Simulate All</button>
                                 </div>
                             </div>
                             <div class="row margin-top">
-                                <div class="col-xs-6 text-center">
-                                    <button type="submit" class="btn btn-md btn-default" onClick={() => this.deploy()}>Deploy</button>
-                                </div>
-                                <div class="col-xs-6 text-center">
-                                    <button type="submit" class="btn btn-md btn-default" onClick={() => this.createAccounts()}>Create Accounts</button>
+                                <div class="col-xs-12 text-center">
+                                    <button type="submit" class="btn btn-md btn-default" onClick={() => self.deploy()}>Deploy</button>
                                 </div>
                             </div>
                             <div class="row margin-top">
                                 <div class="col-xs-4 text-center">
-                                    <button type="submit" class="btn btn-md btn-default" onClick={() => this.addVoters()}>Add Voters</button>
+                                    <button type="submit" class="btn btn-md btn-default" onClick={() => self.addVoters()}>Add Voters</button>
                                 </div>
                                 <div class="col-xs-4 text-center">
-                                    <button type="submit" class="btn btn-md btn-default" onClick={() => this.addPostulants()}>Add Postulants</button>
+                                    <button type="submit" class="btn btn-md btn-default" onClick={() => self.addPostulants()}>Add Postulants</button>
                                 </div>
                                 <div class="col-xs-4 text-center">
-                                    <button type="submit" class="btn btn-md btn-default" onClick={() => this.setVerifiers()}>Set Verifiers</button>
+                                    <button type="submit" class="btn btn-md btn-default" onClick={() => self.setVerifiers()}>Set Verifiers</button>
+                                </div>
+                            </div>
+                            <div class="row margin-top">
+                                <div class="col-xs-12 text-center">
+                                    <button type="submit" class="btn btn-md btn-default" onClick={() => self.setStage(1)}>Start Election</button>
                                 </div>
                             </div>
                             <div class="row margin-top">
                                 <div class="col-xs-6 text-center">
-                                    <button type="submit" class="btn btn-md btn-default" onClick={() => this.simulateVotes()}>Simulate Election</button>
+                                    <button type="submit" class="btn btn-md btn-default" onClick={() => self.simulateVotes()}>Simulate Election</button>
                                 </div>
                                 <div class="col-xs-6 text-center">
-                                    <button type="submit" class="btn btn-md btn-default" onClick={() => this.verifyVotes()}>Verify Votes</button>
+                                    <button type="submit" class="btn btn-md btn-default" onClick={() => self.verifyVotes()}>Verify Votes</button>
+                                </div>
+                            </div>
+                            <div class="row margin-top">
+                                <div class="col-xs-12 text-center">
+                                    <button type="submit" class="btn btn-md btn-default" onClick={() => self.setStage(2)}>Finish Election</button>
                                 </div>
                             </div>
                             <div class="row margin-top">
                                 <div class="col-xs-6 text-center">
-                                    <button type="submit" class="btn btn-md btn-default" onClick={() => this.showResults()}>Show Results</button>
+                                    <button type="submit" class="btn btn-md btn-default" onClick={() => self.showResults()}>Show Results</button>
                                 </div>
                                 <div class="col-xs-6 text-center">
-                                    <button type="submit" class="btn btn-md btn-default" onClick={() => this.viewVotes()}>View Votes</button>
+                                    <button type="submit" class="btn btn-md btn-default" onClick={() => self.viewVotes()}>View Votes</button>
                                 </div>
                             </div>
                         </form>

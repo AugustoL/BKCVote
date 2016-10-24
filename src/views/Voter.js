@@ -15,13 +15,13 @@ export default class Voter extends React.Component {
                     <h1 class="title">Voter Options</h1>
                 </div>
                 <div class="col-xs-12 text-center">
-                    <Link to="createAccount" class="cursor-pointer"><h2 class="title">Create Account</h2></Link>
+                    <Link to="createAccount" class="cursor-pointer"><h2 class="margin-top bargin-bottom">Create Account</h2></Link>
                 </div>
                 <div class="col-xs-12 text-center">
-                    <Link to="vote" class="cursor-pointer"><h2 class="title">Vote</h2></Link>
+                    <Link to="vote" class="cursor-pointer"><h2 class="margin-top bargin-bottom">Vote</h2></Link>
                 </div>
                 <div class="col-xs-12 text-center">
-                    <Link to="viewVote" class="cursor-pointer"><h2 class="title">View my Vote</h2></Link>
+                    <Link to="viewVote" class="cursor-pointer"><h2 class="margin-top bargin-bottom">View my Vote</h2></Link>
                 </div>
             </div>
         )

@@ -8,7 +8,7 @@ import Store from "../Store";
 import * as Actions from "../actions";
 import Loader from "../components/Loader";
 import Modal from '../components/Modal';
-import QRReader from "../components/QRReader";
+import Input from "../components/Input";
 
 export default class Vote extends React.Component {
 
@@ -16,16 +16,9 @@ export default class Vote extends React.Component {
         super();
         this.state = {
             loading: false,
-            voteToAddress: "",
-            voterAddress: "",
-            voterData: "",
-            voterPassword: "",
+            postulantSelected: "",
             postulants: [],
-            postulantsOptions : [],
-            showQRToVote: false,
-            showQRVoterAddress: false,
-            showQRVoterData: false,
-            hidePassword: true
+            postulantsOptions : []
         }
     }
 
@@ -38,7 +31,7 @@ export default class Vote extends React.Component {
                 else {
                     var postulantsOptions = [];
                     for (var i = 0; i < postulants.length; i++)
-                        postulantsOptions.push({ value: postulants[i].address, label: postulants[i].party});
+                        postulantsOptions.push({ value: postulants[i].id, label: postulants[i].party+' - '+postulants[i].name});
                     self.setState({postulants: postulants, postulantsOptions : postulantsOptions});
                 }
             });
@@ -47,67 +40,74 @@ export default class Vote extends React.Component {
 
     submitVote(){
         var self = this;
-        self.setState({loading: true});
-        Actions.Ethereum.getVoterInfo(self.state.voterAddress, function(err, info){
-            if (!info.voted && info.verifier != '0x0000000000000000000000000000000000000000'){
-                var payloadData = Actions.Ethereum.buildFunctionData([
-                    self.state.voteToAddress
-                ], 'vote', Store.contract.ABI)
-                var voteTx = Actions.Ethereum.buildTX({
-                    to: Store.contract.address,
-                    from : self.state.voterAddress,
-                    value: 0,
-                    data: payloadData
-                });
-                Actions.Account.sign({
-                    password: self.state.voterPassword,
-                    data: self.state.voterData
-                },
-                voteTx,
-                function(err, signedTX){
-                    Actions.Ethereum.sendTXs([signedTX], function(err){
-                        if (err){
-                            var modalBody =
-                                <div class="row modalBody">
-                                    <div class="col-xs-12 text-center margin-bottom">
-                                        {err}
-                                    </div>
-                                </div>;
-                            self.setState({loading: false});
-                            self._modal.setState({open: true, title: 'Error', body: modalBody});
-                        } else {
-                            var modalBody =
-                                <div class="row modalBody">
-                                    <div class="col-xs-12 text-center margin-bottom">
-                                        Address Voted
-                                        <br/><strong>{self.state.voteToAddress}</strong><br></br>
-                                    </div>
-                                </div>;
-                            self.setState({loading: false});
-                            self._modal.setState({open: true, title: 'Vote Done', body: modalBody});
-                        }
+        if (
+            self._voterAddress.isValid() && self._voterAccount.isValid()
+            && self._voterPassword.isValid() && (self.state.postulantSelected != "")
+        ){
+            var voterAddress = self._voterAddress.getValue();
+            var voterPassword = self._voterPassword.getValue();
+            var voterAccount = self._voterAccount.getValue();
+            self.setState({loading: true});
+            Actions.Ethereum.getVoterInfo(voterAddress, function(err, info){
+                if (!info.voted && info.verifier != '0x0000000000000000000000000000000000000000'){
+                    var payloadData = Actions.Ethereum.buildFunctionData([
+                        self.state.postulantSelected
+                    ], 'vote', Store.contract.ABI)
+                    var voteTx = Actions.Ethereum.buildTX({
+                        to: Store.contract.address,
+                        from : voterAddress,
+                        data: payloadData
                     });
-                });
-            } else {
-                var modalBody =
-                    <div class="row modalBody">
-                        { info.voted ?
-                            <div class="col-xs-12 text-center margin-bottom">
-                                Vote already done.
-                            </div>
-                            : <div/>
-                        }
-                        { info.verifier == '0x0000000000000000000000000000000000000000' ?
-                            <div class="col-xs-12 text-center margin-bottom">
-                                Verifier not set.
-                            </div>
-                            : <div/>
-                        }
-                    </div>;
-                self.setState({loading: false});
-                self._modal.setState({open: true, title: 'Error', body: modalBody});
-            }
-        });
+                    Actions.Account.sign({
+                        password: voterPassword,
+                        data: voterAccount
+                    },
+                    voteTx,
+                    function(err, signedTX){
+                        Actions.Ethereum.sendTXs([signedTX], function(err){
+                            if (err){
+                                var modalBody =
+                                    <div class="row modalBody">
+                                        <div class="col-xs-12 text-center margin-bottom">
+                                            {err}
+                                        </div>
+                                    </div>;
+                                self.setState({loading: false});
+                                self._modal.setState({open: true, title: 'Error', body: modalBody});
+                            } else {
+                                var modalBody =
+                                    <div class="row modalBody">
+                                        <div class="col-xs-12 text-center margin-bottom">
+                                            Postulant Selected
+                                            <br/><strong>{self.state.postulantSelected}</strong><br></br>
+                                        </div>
+                                    </div>;
+                                self.setState({loading: false});
+                                self._modal.setState({open: true, title: 'Vote Done', body: modalBody});
+                            }
+                        });
+                    });
+                } else {
+                    var modalBody =
+                        <div class="row modalBody">
+                            { info.voted ?
+                                <div class="col-xs-12 text-center margin-bottom">
+                                    Vote already done.
+                                </div>
+                                : <div/>
+                            }
+                            { info.verifier == '0x0000000000000000000000000000000000000000' ?
+                                <div class="col-xs-12 text-center margin-bottom">
+                                    Verifier not set.
+                                </div>
+                                : <div/>
+                            }
+                        </div>;
+                    self.setState({loading: false});
+                    self._modal.setState({open: true, title: 'Error', body: modalBody});
+                }
+            });
+        }
     }
 
     render() {
@@ -124,145 +124,44 @@ export default class Vote extends React.Component {
                     <form class="col-xs-8 col-xs-offset-2">
                         <h3>Vote Information</h3>
                         <div class="form-group">
-                            <label for="voteAddressInput">Vote Address</label>
-                            <QRReader
-                                showQR={self.state.showQRToVote}
-                                onError={(e) => console.error(e)}
-                                onScan={(data) => {
-                                    self.setState({voteToAddress: data, showQRToVote: false});
-                                }}
-                            ></QRReader>
+                            <label for="voteAddressInput">Postulant to vote</label>
                             <Select
                                 name="selectVoterAddress"
-                                value={self.state.voteToAddress}
+                                value={self.state.postulantSelected}
                                 options={self.state.postulantsOptions}
-                                onChange={(val) => self.setState({voteToAddress: (val) ? val.value : ''})}
+                                onChange={(val) => self.setState({postulantSelected: (val) ? val.value : ''})}
                             />
-                            <div class="input-group">
+                            <div class="form-group">
                                 <input
                                     type="text"
                                     class="form-control"
-                                    id="toAddressInput"
-                                    value={self.state.voteToAddress}
-                                    onChange={(event) => self.setState({voteToAddress: event.target.value})}
-                                    placeholder="Address you want to vote"
+                                    value={self.state.postulantSelected}
+                                    onChange={(event) => self.setState({postulantSelected: event.target.value})}
+                                    placeholder="ID you want to vote"
                                 />
-                                {self.state.showQRToVote ?
-                                    <span
-                                        class="input-group-addon cursor-pointer"
-                                        onClick={() => self.setState({showQRToVote: false})}
-                                    >
-                                        Close <span class="fa fa-camera"></span>
-                                    </span>
-                                :
-                                    <span
-                                        class="input-group-addon cursor-pointer"
-                                        onClick={() => self.setState({showQRToVote: true})}
-                                    >
-                                        Open <span class="fa fa-camera"></span>
-                                    </span>
-                                }
                             </div>
                         </div>
-                        <h3>Voter Information</h3>
-                        <div class="form-group">
-                            <label for="addressInput">Address</label>
-                            <QRReader
-                                showQR={self.state.showQRVoterAddress}
-                                onError={(e) => console.error(e)}
-                                onScan={(data) => {
-                                    self.setState({voterAddress: data, showQRVoterAddress: false});
-                                }}
-                            ></QRReader>
-                            <div class="input-group">
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    id="addressInput"
-                                    value={self.state.voterAddress}
-                                    onChange={(event) => self.setState({voterAddress: event.target.value})}
-                                    placeholder="Your address"
-                                />
-                                {self.state.showQRVoterAddress ?
-                                    <span
-                                        class="input-group-addon cursor-pointer"
-                                        onClick={() => self.setState({showQRVoterAddress: false})}
-                                    >
-                                        Close <span class="fa fa-camera"></span>
-                                    </span>
-                                :
-                                    <span
-                                        class="input-group-addon cursor-pointer"
-                                        onClick={() => self.setState({showQRVoterAddress: true})}
-                                    >
-                                        Open <span class="fa fa-camera"></span>
-                                    </span>
-                                }
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="voterDataInput">Account</label>
-                            <QRReader
-                                showQR={self.state.showQRVoterData}
-                                onError={(e) => console.error(e)}
-                                onScan={(data) => {
-                                    self.setState({voterData: data, showQRVoterData: false});
-                                }}
-                            ></QRReader>
-                            <div class="input-group">
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    id="voterDataInput"
-                                    value={self.state.voterData}
-                                    onChange={(event) => self.setState({voterData: event.target.value})}
-                                    placeholder="Your account data"
-                                />
-                                {self.state.showQRVoterData ?
-                                    <span
-                                        class="input-group-addon cursor-pointer"
-                                        onClick={() => self.setState({showQRVoterData: false})}
-                                    >
-                                        Close <span class="fa fa-camera"></span>
-                                    </span>
-                                :
-                                    <span
-                                        class="input-group-addon cursor-pointer"
-                                        onClick={() => self.setState({showQRVoterData: true})}
-                                    >
-                                        Open <span class="fa fa-camera"></span>
-                                    </span>
-                                }
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="voterpasswordInput">Password</label>
-                            <div class="input-group">
-                                <input
-                                    type={self.state.hidePassword ? 'password': 'text'}
-                                    class="form-control"
-                                    id="voterpasswordInput"
-                                    value={self.state.voterPassword}
-                                    onChange={(event) => self.setState({voterPassword: event.target.value})}
-                                    placeholder="Your password"
-                                />
-                                {self.state.hidePassword ?
-                                    <span
-                                        class="input-group-addon cursor-pointer"
-                                        onClick={() => self.setState({hidePassword: false})}
-                                    >
-                                        <span class="fa fa-eye"></span>
-                                    </span>
-                                :
-                                    <span
-                                        class="input-group-addon cursor-pointer"
-                                        onClick={() => self.setState({hidePassword: true})}
-                                    >
-                                        <span class="fa fa-eye-slash"></span>
-                                    </span>
-                                }
-                            </div>
-                        </div>
+                        <h3>Voter Info</h3>
+                        <Input
+                            ref={(c) => this._voterAddress = c}
+                            type='address'
+                            title='Voter Address'
+                            placeholder='Voter Address'
+                        />
+                        <Input
+                            ref={(c) => this._voterAccount = c}
+                            type='account'
+                            regex="^[a-zA-Z0-9+/\r\n]+={0,2}$"
+                            title='Voter Account'
+                            placeholder='Account'
+                        />
+                        <Input
+                            ref={(c) => this._voterPassword = c}
+                            regex="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[$@$!%*?&#_~])[A-Za-z0-9$@$!%*?&#_~]{8,}"
+                            type='password'
+                            title='Voter Password'
+                            placeholder='Password'
+                        />
                         <div class="row text-center">
                             <button type="submit" class="btn btn-default" onClick={() => this.submitVote()}>Submit</button>
                         </div>
