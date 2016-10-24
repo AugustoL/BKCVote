@@ -137,7 +137,7 @@ export default class Home extends React.Component {
                                                 <td>{postulant.votes}</td>
                                             </tr>
                                         );
-                                    }) : <div/>}
+                                    }) : <tr/>}
                                 </tbody>
                             </table>
                         </div>
@@ -162,7 +162,7 @@ export default class Home extends React.Component {
                                                 <td>{(!voter.voted) ? "Not Voted" : (!voter.verified) ? "Not Verified" : "Voted"}</td>
                                             </tr>
                                         );
-                                    }) : <div/>}
+                                    }) : <tr/>}
                                 </tbody>
                             </table>
                         </div>

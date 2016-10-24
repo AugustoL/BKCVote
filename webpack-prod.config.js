@@ -54,6 +54,7 @@ module.exports = {
     new CopyWebpackPlugin([
         { from: __dirname+'/src/assets', to: __dirname+'/build/assets' },
         { from: __dirname+'/src/config.json', to: __dirname+'/build/config.json' },
+        { from: __dirname+'/src/accounts.json', to: __dirname+'/build/accounts.json' },
         { from: __dirname+'/src/contracts.json', to: __dirname+'/build/contracts.json' },
         { from: __dirname+'/src/index.html', to: __dirname+'/build/index.html' }
         ]),

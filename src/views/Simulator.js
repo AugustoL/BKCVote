@@ -10,7 +10,7 @@ var Web3 = require('web3');
 import * as Actions from "../actions";
 import Loader from "../components/Loader";
 
-var accounts = JSON.parse(require('../../blockchain/accounts.json'));
+var accounts = JSON.parse(require('../accounts.json'));
 
 var contracts = JSON.parse(require('../contracts.json'));
 
