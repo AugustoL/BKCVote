@@ -22,6 +22,15 @@ If you need to use the blockchain operations you can build from source the go-et
 ### Solcompiler-js
 
 Is an app that runs a script that build teh contracts.json file, for more information go here: https://github.com/AugustoL/solcompiler-js
+
+To use solcompiler-js you will need to set config.json file inside the solcompiler-js folder, specifying the output file and contracts folder, example:
+
+```
+{
+    "output": "/home/augusto/BKCVote/src/contracts.json",
+    "contractsDir": "/home/augusto/BKCVote/contracts/"
+}
+```
 ## Blockchain Operations
 
 #### Console
@@ -74,12 +83,12 @@ Run `npm run build` to build the production version.
 
 ## TO DO
 
+- [x] Production example using testnet.
+- [x] Seed voters and verifiers accounts with the minimum and necessary balance using send() from main contract.
 - [ ] Smart Contract for a voter, with restricted access and only able to send founds to a valid contract.
 - [ ] Smart Contract to manage the valid contracts of the app and know if the contract address belong to the BKCVote app.
 - [ ] Better storage/encryption of the votes, right now they are stored on a private variable inside the contract data.
-- [x] Production example using testnet.
 - [ ] Support more languages.
-- [x] Seed voters and verifiers accounts with the minimum and necessary balance using send() from main contract.
 - [ ] Better documentation.
 
 ### Donations
