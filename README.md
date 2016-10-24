@@ -22,6 +22,15 @@ If you need to use the blockchain operations you can build from source the go-et
 ### Solcompiler-js
 
 Is an app that runs a script that build teh contracts.json file, for more information go here: https://github.com/AugustoL/solcompiler-js
+
+To use solcompiler-js you will need to set config.json file inside the solcompiler-js folder, specifying the output file and contracts folder, example:
+
+```
+{
+    "output": "/home/augusto/BKCVote/src/contracts.json",
+    "contractsDir": "/home/augusto/BKCVote/contracts/"
+}
+```
 ## Blockchain Operations
 
 #### Console
