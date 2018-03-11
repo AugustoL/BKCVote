@@ -67,7 +67,7 @@ This command will delete all the blockchain data, use it if you want to start a 
 
 1. Remove all content on blockchain/geth folder, generate the accounts, init the genesis block and start mining:
 
-`npm bkc-clean && npm bkc-accounts 10 && npm bkc-init && npm bkc-mine`
+`npm run bkc-clean && npm run bkc-accounts 10 && npm run bkc-init && npm run bkc-mine`
 
 2. Go to the simulate view, you only will be able to add the voters, postulants ans set verifiers when teh stage of the election is 0.
 
